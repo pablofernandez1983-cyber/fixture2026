@@ -75,7 +75,7 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .ko-meta .no{color:var(--gold);font-weight:700}
 .ko-team{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0}
 .ko-team .nm{font-family:'Barlow Condensed';font-weight:600;font-size:15.5px}
-.ko-team .nm.pending{color:var(--muted);font-style:italic;font-weight:400;font-size:13px}
+.ko-team .nm.pending{color:var(--muted);font-weight:400;font-size:13px}
 .ko-team .nm.win{color:var(--gold)}
 .ko-team .nm.arg{color:var(--gold)}
 .ko-venue{font-family:'Barlow Condensed';font-size:10.5px;color:var(--muted);margin-top:6px;border-top:1px solid rgba(26,58,92,.4);padding-top:6px}
@@ -87,7 +87,7 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .legend span{display:flex;align-items:center;gap:5px}
 .dotg{width:10px;height:10px;border-radius:3px;display:inline-block}
 .tools{display:flex;gap:8px;padding:4px 4px 0;flex-wrap:wrap}
-.tool{flex:1;min-width:110px;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:9px;font-family:'Barlow Condensed';font-weight:700;font-size:12.5px;cursor:pointer;text-align:center}
+.tool{flex:1;min-width:110px;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:9px;font-family:'Barlow Condensed';font-weight:700;font-size:12.5px;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;gap:4px}
 .tool.prim{background:var(--gold);color:#06121f;border-color:var(--gold)}
 .tool:active{transform:scale(.97)}
 .hidden{display:none}
@@ -231,8 +231,8 @@ body.light .bs{color:var(--text)}
       <span><i class="dotg q1"></i>1&deg;</span><span><i class="dotg q2"></i>2&deg;</span><span><i class="dotg q3"></i>mejor 3&deg;</span>
     </div>
     <div class="tools">
-      <div class="tool prim" id="simBtn">&#129529; Simular grupos</div>
-      <div class="tool" id="simAllBtn">&#127942; Simular Mundial</div>
+      <div class="tool prim" id="simBtn" style="flex-basis:100%">&#129529; Simular grupos</div>
+      <div class="tool prim" id="simAllBtn">&#127942; Simular Mundial</div>
       <div class="tool" id="cfgBtn">&#9881;&#65039; Azar</div>
       <div class="tool" id="infoBtn">&#8505;&#65039; C&oacute;mo funciona</div>
       <div class="tool" id="resetBtn">&#128465;&#65039; Borrar todo</div>
@@ -247,7 +247,7 @@ body.light .bs{color:var(--text)}
       <div class="kotab" data-k="list">&#9999;&#65039; Lista (editar)</div>
     </div>
     <div class="tools">
-      <div class="tool prim" id="simKoBtn">&#129529; Simular eliminatorias</div>
+      <div class="tool prim" id="simKoBtn" style="flex-basis:100%">&#129529; Simular eliminatorias</div>
       <div class="tool" id="cfgBtn2">&#9881;&#65039; Azar</div>
       <div class="tool" id="resetKoBtn">&#128465;&#65039; Borrar llaves</div>
     </div>
