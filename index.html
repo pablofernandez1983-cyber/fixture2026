@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Fixture 2026">
 <meta name="theme-color" content="#010D1E">
 <title>Fixture Mundial 2026 &middot; Hora Argentina</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#010D1E;--surface:#041828;--surface2:#0A2640;--gold:#FFB800;--gold2:#E09000;--red:#E8192C;--green:#00C94E;--blue:#00D4FF;--text:#FFFFFF;--muted:#6088AA;--border:#1A3A5C;}
@@ -217,7 +219,7 @@ body.light .bs{color:var(--text)}
   <div class="wrap">
     <div class="tabs">
       <div class="tab active" data-v="grupos">Grupos</div>
-      <div class="tab" data-v="llaves">Eliminatorias</div>
+      <div class="tab" data-v="llaves">Llaves</div>
       <div class="tab" data-v="arg">Argentina</div>
     </div>
   </div>
@@ -231,14 +233,13 @@ body.light .bs{color:var(--text)}
       <span><i class="dotg q1"></i>1&deg;</span><span><i class="dotg q2"></i>2&deg;</span><span><i class="dotg q3"></i>mejor 3&deg;</span>
     </div>
     <div class="tools">
-      <div class="tool prim" id="simBtn" style="flex-basis:100%">&#129529; Simular grupos</div>
       <div class="tool" id="simAllBtn">&#127942; Simular Mundial</div>
       <div class="tool" id="cfgBtn">&#9881;&#65039; Azar</div>
       <div class="tool" id="infoBtn">&#8505;&#65039; C&oacute;mo funciona</div>
       <div class="tool" id="resetBtn">&#128465;&#65039; Borrar todo</div>
     </div>
     <div id="groups"></div>
-    <div class="note">Tocá los casilleros para cargar el resultado a mano. <b>Simular grupos</b> completa marcadores probables segun la fuerza de cada seleccion (ranking FIFA + favoritismo), con algo de azar para que haya sorpresas. La tabla y las llaves se recalculan solas. Desempates: puntos, diferencia de gol, goles a favor (simplificado vs. FIFA).</div>
+    <div class="note">Tocá los casilleros para cargar el resultado a mano. <b>Simular Mundial</b> completa todos los marcadores probables según la fuerza de cada selección (ranking FIFA + favoritismo), con algo de azar para que haya sorpresas. La tabla y las llaves se recalculan solas. Desempates: puntos, diferencia de gol, goles a favor (simplificado vs. FIFA).</div>
   </div>
 
   <div id="view-llaves" class="hidden">
@@ -691,7 +692,6 @@ function simKnockouts(forced){recompute();
       else{delete STATE.adv[m.id];delete STATE.pens[m.id];}});
     recompute();});
   persist();}
-document.getElementById('simBtn').onclick=()=>{simGroups();rerender();toast('Grupos simulados &#129529;');};
 document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
 document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Eliminatorias simuladas &#129529;');};
 document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los resultados (grupos y llaves)?')){STATE.results={};STATE.adv={};STATE.pens={};persist();rerender();toast('Todo borrado');}};
@@ -728,6 +728,7 @@ document.getElementById('btnUpd').onclick=updateResults;
 
 /* ---------- boot ---------- */
 renderChips();rerender();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
 </body>
 </html>
