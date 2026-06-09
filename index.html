@@ -474,11 +474,11 @@ function resolveSlot(slot,mno){
   if(slot.t==='ML')return koWinnerLoser(slot.m).l;
   return null;}
 function slotLabel(slot){
-  if(slot.t==='W')return 'Ganador Gr. '+slot.g;
-  if(slot.t==='R')return '2&deg; Gr. '+slot.g;
+  if(slot.t==='W')return '1&deg; '+slot.g;
+  if(slot.t==='R')return '2&deg; '+slot.g;
   if(slot.t==='T')return '3&deg; ('+slot.gs.join('/')+')';
-  if(slot.t==='M')return 'Ganador P'+slot.m;
-  if(slot.t==='ML')return 'Perdedor P'+slot.m;
+  if(slot.t==='M')return 'G. P'+slot.m;
+  if(slot.t==='ML')return 'P. P'+slot.m;
   return '';}
 function resolveKoTeam(m,side){const slot=m[side];return{team:resolveSlot(slot,m.no),label:slotLabel(slot)};}
 
