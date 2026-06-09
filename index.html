@@ -219,7 +219,7 @@ body.light .bs{color:var(--text)}
   <div class="wrap">
     <div class="tabs">
       <div class="tab active" data-v="grupos">Grupos</div>
-      <div class="tab" data-v="llaves">Llaves</div>
+      <div class="tab" data-v="llaves">Fase Final</div>
       <div class="tab" data-v="arg">Argentina</div>
     </div>
   </div>
@@ -239,7 +239,7 @@ body.light .bs{color:var(--text)}
       <div class="tool" id="resetBtn">&#128465;&#65039; Borrar todo</div>
     </div>
     <div id="groups"></div>
-    <div class="note">Tocá los casilleros para cargar el resultado a mano. <b>Simular Mundial</b> completa todos los marcadores probables según la fuerza de cada selección (ranking FIFA + favoritismo), con algo de azar para que haya sorpresas. La tabla y las llaves se recalculan solas. Desempates: puntos, diferencia de gol, goles a favor (simplificado vs. FIFA).</div>
+    <div class="note">Tocá los casilleros para cargar el resultado a mano. <b>Simular Mundial</b> completa todos los marcadores probables según la fuerza de cada selección (ranking FIFA + favoritismo), con algo de azar para que haya sorpresas. La tabla y la Fase Final se recalculan solas. Desempates: puntos, diferencia de gol, goles a favor (simplificado vs. FIFA).</div>
   </div>
 
   <div id="view-llaves" class="hidden">
@@ -248,9 +248,9 @@ body.light .bs{color:var(--text)}
       <div class="kotab" data-k="list">&#9999;&#65039; Lista (editar)</div>
     </div>
     <div class="tools">
-      <div class="tool prim" id="simKoBtn" style="flex-basis:100%">&#129529; Simular eliminatorias</div>
+      <div class="tool prim" id="simKoBtn">&#129529; Simular Fase Final</div>
       <div class="tool" id="cfgBtn2">&#9881;&#65039; Azar</div>
-      <div class="tool" id="resetKoBtn">&#128465;&#65039; Borrar llaves</div>
+      <div class="tool" id="resetKoBtn">&#128465;&#65039; Borrar Fase Final</div>
     </div>
     <div class="note" id="koStatus"></div>
     <div id="bracket-graph"><div class="bracket-scroll"><div class="bracket-canvas" id="bcanvas"></div></div><div id="bronzeBox" class="bronze"></div></div>
@@ -424,7 +424,7 @@ function renderInfo(){const s=getSim();
   const blended=rankList(t=>POW(t),12);
   const hist=rankList(t=>HIST[t]||70,10);
   document.getElementById('info').innerHTML=`<div class="mh"><h3>&iquest;C&oacute;mo funciona?</h3><button class="mx" onclick="closeInfo()">&times;</button></div><div class="mb info-mb">
-    <h4>C&oacute;mo se simulan los partidos</h4><p>Cada selecci&oacute;n tiene una &laquo;fuerza&raquo;. La diferencia de fuerza define los goles esperados de cada equipo y el marcador se sortea con ese promedio (modelo de Poisson). En eliminatorias el empate se resuelve por penales (simulados). El control de <b>azar</b> regula qu&eacute; tan seguido se imponen los m&aacute;s fuertes.</p>
+    <h4>C&oacute;mo se simulan los partidos</h4><p>Cada selecci&oacute;n tiene una &laquo;fuerza&raquo;. La diferencia de fuerza define los goles esperados de cada equipo y el marcador se sortea con ese promedio (modelo de Poisson). En la Fase Final el empate se resuelve por penales (simulados). El control de <b>azar</b> regula qu&eacute; tan seguido se imponen los m&aacute;s fuertes.</p>
     <h4>De d&oacute;nde sale la fuerza</h4><p>Combina <b>dos criterios</b> que pod&eacute;s pesar con el slider Historia&harr;Actualidad. Ac&aacute; cada mirada por separado, con su fuente:</p>
     <h4>&#127942; Por Historia (Mundiales)</h4><p class="muted"><span class="src">T&iacute;tulos (Brasil 5, Alemania 4, Argentina 3, Francia/Uruguay 2, Inglaterra/España 1) y tabla all-time de Mundiales &mdash; FIFA, planetfootball/Statista.</span></p><div class="rank">${hist}</div>
     <h4>&#128202; Por Ranking FIFA (1 abr 2026)</h4><p class="muted"><span class="src">FIFA/Coca-Cola Men's World Ranking, &uacute;ltima actualizaci&oacute;n oficial antes del Mundial.</span></p><div class="rank">${rankArr(FIFA_TOP)}</div>
@@ -494,7 +494,7 @@ function mkInput(m,side){const r=STATE.results[m.id]||{};const inp=document.crea
   inp.value=(side==='h'?(r.h??''):(r.a??''));
   if(r.src==='api')inp.classList.add('api');
   inp.addEventListener('change',()=>{const val=sanitizeScore(inp.value);inp.value=val;inp.classList.remove('api');const cur=STATE.results[m.id]||{h:'',a:''};cur[side]=val;delete cur.src;STATE.results[m.id]=cur;
-    if(m.id[0]==='G'){if(clearKO())toast('Llaves reiniciadas por el cambio en grupos');}
+    if(m.id[0]==='G'){if(clearKO())toast('Fase Final reiniciada por el cambio en grupos');}
     persist();rerender();});
   return inp;}
 
@@ -599,7 +599,7 @@ function renderBracketGraph(){
 function renderKoStatus(){
   const done=Object.keys(_G).filter(g=>_G[g].complete).length;
   let msg=`Fase de grupos: <b style="color:var(--gold)">${done}/12</b> grupos completos. `;
-  msg+=_T.allComplete?'Llaves completas. ':'Las llaves se completan a medida que cargás resultados (ganadores y 2&deg; al cerrar cada grupo; mejores 3&deg; al cerrar los 12). ';
+  msg+=_T.allComplete?'Fase Final completa. ':'La Fase Final se completa a medida que carg&aacute;s resultados (ganadores y 2&deg; al cerrar cada grupo; mejores 3&deg; al cerrar los 12). ';
   if(KO_VIEW==='graph')msg+='Desliz&aacute; el gr&aacute;fico para ver todo el cuadro. ';
   msg+='<br><span style="font-size:11px">* Los 8 mejores 3&deg; se asignan respetando la elegibilidad por grupo (aproxima la tabla oficial FIFA). Edit&aacute; marcadores en la pesta&ntilde;a Lista.</span>';
   document.getElementById('koStatus').innerHTML=msg;}
@@ -642,12 +642,12 @@ function renderArg(){
       if(r&&r.h===r.a){const ph=penOf(st.no,'home'),pa=penOf(st.no,'away');if(ph!=null&&pa!=null)score+=(st.side==='home'?` (pen ${ph}-${pa})`:` (pen ${pa}-${ph})`);}
       if(r&&wl.w&&wl.w!==ARG){tag='Eliminada';tagCls='arg-elim';stop=true;}else if(r&&st.no===104&&wl.w===ARG){tag='&iexcl;CAMPE&Oacute;N! &#127942;';tagCls='arg-champ';stop=true;}
       h2+=argRow(st,{score,tag,tagCls});if(stop)break;}
-    html+=h2||'<div class="note">Esperando resultados de eliminatorias…</div>';}
+    html+=h2||'<div class="note">Esperando resultados de Fase Final…</div>';}
   html+='<div class="sec-h">Posibles cruces seg&uacute;n la posici&oacute;n</div>';
   if(S.first){html+='<div class="scn"><div class="scn-h"><span>Si sale 1&ordm;</span><span>Camino completo</span></div><div class="scn-b">';buildRoute(S.first.no,S.first.side).forEach(st=>html+=argRow(st));html+='</div></div>';}
   if(S.second){html+='<div class="scn"><div class="scn-h"><span>Si sale 2&ordm;</span><span>Camino completo</span></div><div class="scn-b">';buildRoute(S.second.no,S.second.side).forEach(st=>html+=argRow(st));html+='</div></div>';}
   if(S.thirds.length){html+='<div class="scn"><div class="scn-h"><span>Si sale 3&ordm; (mejor tercero)</span><span>todos los caminos</span></div><div class="scn-b">';
-    html+='<div class="note" style="margin:2px 0 6px">Seg&uacute;n en qu&eacute; llave caiga el mejor tercero (lo define la tabla FIFA), este ser&iacute;a el camino completo hasta la final:</div>';
+    html+='<div class="note" style="margin:2px 0 6px">Seg&uacute;n en qu&eacute; parte de la Fase Final caiga el mejor tercero (lo define la tabla FIFA), este ser&iacute;a el camino completo hasta la final:</div>';
     S.thirds.forEach(t=>{const m=DATA.koMatches.find(x=>x.no===t.no);const oppSlot=m[t.side==='home'?'away':'home'];const oppName=resolveSlot(oppSlot,t.no)||slotLabel(oppSlot);
       html+=`<div class="thirdcase"><div class="thirdcase-h">&#9851; Si cae en P${t.no} &mdash; debut vs ${oppName}</div>`;
       buildRoute(t.no,t.side).forEach(st=>html+=argRow(st));html+='</div>';});
@@ -693,9 +693,9 @@ function simKnockouts(forced){recompute();
     recompute();});
   persist();}
 document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
-document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Eliminatorias simuladas &#129529;');};
-document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los resultados (grupos y llaves)?')){STATE.results={};STATE.adv={};STATE.pens={};persist();rerender();toast('Todo borrado');}};
-document.getElementById('resetKoBtn').onclick=()=>{if(confirm('¿Borrar solo los resultados de eliminatorias?')){DATA.koMatches.forEach(m=>{delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});persist();rerender();toast('Llaves borradas');}};
+document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Fase Final simulada &#129529;');};
+document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los resultados (grupos y Fase Final)?')){STATE.results={};STATE.adv={};STATE.pens={};persist();rerender();toast('Todo borrado');}};
+document.getElementById('resetKoBtn').onclick=()=>{if(confirm('¿Borrar solo los resultados de Fase Final?')){DATA.koMatches.forEach(m=>{delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});persist();rerender();toast('Fase Final borrada');}};
 
 /* ---------- live update (best-effort, TheSportsDB free) ---------- */
 const ALIAS={'mexico':'México','south africa':'Sudáfrica','south korea':'Corea del Sur','korea republic':'Corea del Sur','czechia':'Chequia','czech republic':'Chequia','canada':'Canadá','bosnia and herzegovina':'Bosnia y Herzegovina','bosnia':'Bosnia y Herzegovina','qatar':'Catar','switzerland':'Suiza','brazil':'Brasil','morocco':'Marruecos','haiti':'Haití','scotland':'Escocia','united states':'Estados Unidos','usa':'Estados Unidos','paraguay':'Paraguay','australia':'Australia','turkey':'Turquía','turkiye':'Turquía','türkiye':'Turquía','germany':'Alemania','curacao':'Curazao','curaçao':'Curazao','ivory coast':'Costa de Marfil',"côte d'ivoire":'Costa de Marfil','ecuador':'Ecuador','netherlands':'Países Bajos','holland':'Países Bajos','japan':'Japón','sweden':'Suecia','tunisia':'Túnez','belgium':'Bélgica','egypt':'Egipto','iran':'Irán','new zealand':'Nueva Zelanda','spain':'España','cape verde':'Cabo Verde','cabo verde':'Cabo Verde','saudi arabia':'Arabia Saudita','uruguay':'Uruguay','france':'Francia','senegal':'Senegal','iraq':'Irak','norway':'Noruega','argentina':'Argentina','algeria':'Argelia','austria':'Austria','jordan':'Jordania','portugal':'Portugal','dr congo':'RD Congo','democratic republic of congo':'RD Congo','congo dr':'RD Congo','uzbekistan':'Uzbekistán','colombia':'Colombia','england':'Inglaterra','croatia':'Croacia','ghana':'Ghana','panama':'Panamá'};
