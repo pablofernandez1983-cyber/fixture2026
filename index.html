@@ -31,7 +31,7 @@ h1,h2,h3{margin:0;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-we
 .tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin:8px auto 4px;max-width:656px}
 .tab{flex:1;text-align:center;padding:10px 6px;border-radius:9px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;color:var(--muted);cursor:pointer;transition:.15s}
 .tab.active{background:var(--surface2);color:var(--gold)}
-.chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:8px 10px}
 .chip{flex:0 0 auto;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:6px 13px;font-family:'Barlow Condensed';font-weight:700;font-size:14.5px;cursor:pointer}
 .chip.active{background:var(--gold);color:#06121f;border-color:var(--gold)}
 .chip.arg{border-color:var(--gold)}
@@ -608,7 +608,7 @@ function rerender(){recompute();renderGroups();renderKoList();renderBracketGraph
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
   const all=el(`<div class="chip ${CUR_GROUP==='all'?'active':''}">Todos</div>`);all.onclick=()=>{CUR_GROUP='all';renderChips();renderGroups();};c.appendChild(all);
   Object.keys(DATA.groups).forEach(g=>{const isArg=DATA.groups[g].includes(ARG);
-    const ch=el(`<div class="chip ${CUR_GROUP===g?'active':''} ${isArg?'arg':''}">Gr. ${g}${isArg?' &#11088;':''}</div>`);
+    const ch=el(`<div class="chip ${CUR_GROUP===g?'active':''} ${isArg?'arg':''}">${g}${isArg?' &#11088;':''}</div>`);
     ch.onclick=()=>{CUR_GROUP=g;renderChips();renderGroups();};c.appendChild(ch);});}
 
 /* ---------- tabs ---------- */
