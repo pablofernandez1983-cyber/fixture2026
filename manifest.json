@@ -1,6 +1,6 @@
 {
-  "name": "Mundial 2026",
-  "short_name": "Mundial 2026",
+  "name": "Fixture Mundial 2026",
+  "short_name": "Fixture 2026",
   "description": "Fixture y simulador del Mundial FIFA 2026",
   "start_url": "/fixture2026/",
   "display": "standalone",
