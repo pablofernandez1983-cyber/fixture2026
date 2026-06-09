@@ -183,6 +183,20 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .rkrow .rkt.arg{color:var(--gold)}
 .rkrow .rkg{flex:0 0 44px;color:var(--muted);font-size:11.5px}
 .rkrow .rkp{flex:0 0 40px;text-align:right;font-family:'Bebas Neue';font-size:15px;color:#fff}
+.hist-btns{display:flex;gap:6px;margin-top:8px}
+.hist-btns button{flex:1;font-family:'Barlow Condensed';font-weight:700;font-size:13px;text-align:center;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 6px;cursor:pointer}
+.hist-btns button.on{background:var(--gold);color:#06121f;border-color:var(--gold)}
+.sc input.api{border-color:var(--blue);color:var(--blue)}
+.btn-theme{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:17px;cursor:pointer;line-height:1}
+/* Tema claro */
+body.light{--bg:#F0F4F8;--surface:#FFFFFF;--surface2:#E4EBF2;--gold:#C48800;--gold2:#A07000;--red:#C81020;--green:#00883A;--blue:#0078A0;--text:#0A1929;--muted:#3A6080;--border:#B8CАДА;}
+body.light{--border:#B8CADA}
+body.light .header{background:linear-gradient(180deg,#F0F4F8 72%,rgba(240,244,248,0))}
+body.light .brand h1{color:var(--text)}
+body.light .pts{color:var(--text)}
+body.light .rkrow .rkp{color:var(--text)}
+body.light .minfo{color:var(--text)}
+body.light .bs{color:var(--text)}
 </style>
 </head>
 <body>
@@ -193,7 +207,10 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
       <div><h1>FIXTURE 2026</h1><div class="sub">Hora Argentina &middot; Mi Mundial</div></div>
     </div>
     <div class="upd">
-      <button class="btn-upd" id="btnUpd">&#8635; Actualizar</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-theme" id="btnTheme" title="Cambiar tema">&#9728;&#65039;</button>
+        <button class="btn-upd" id="btnUpd">&#8635; Actualizar</button>
+      </div>
       <div class="updnote" id="updNote">Best-effort &middot; solo grupos &middot; no oficial</div>
     </div>
   </div>
@@ -262,9 +279,20 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
     </div>
     <div class="adv-h">Ajustes avanzados</div>
     <div class="slider-wrap nb">
-      <div class="slide-lbl"><span>Actualidad / Ranking</span><span>Historia / Mundiales</span></div>
-      <input type="range" id="histSlider" min="0" max="100" step="5">
-      <div id="histVal" class="azar-val"></div>
+      <div class="slide-lbl"><span>Ponderaci&oacute;n Historia / Actualidad</span></div>
+      <div class="hist-btns" id="histBtns">
+        <button data-w="0">Actualidad</button>
+        <button data-w="50">50&nbsp;/&nbsp;50</button>
+        <button data-w="100">Historia</button>
+      </div>
+    </div>
+    <div class="slider-wrap nb" style="margin-top:10px">
+      <div class="slide-lbl"><span>Fuente de actualidad</span></div>
+      <div class="hist-btns" id="actBtns">
+        <button data-act="fifa">Ranking FIFA</button>
+        <button data-act="mix">Mezcla</button>
+        <button data-act="odds">Apuestas</button>
+      </div>
     </div>
     <div class="champ-pick">
       <div class="slide-lbl" style="margin-bottom:6px"><span>&#127942; Forzar campe&oacute;n</span></div>
@@ -297,10 +325,25 @@ const ACT={
  'Ecuador':75,'Irán':75,'Corea del Sur':74,'Austria':74,'Costa de Marfil':74,'Chequia':73,'Australia':73,'Egipto':73,'Suecia':73,'Argelia':73,
  'Canadá':72,'Paraguay':72,'Escocia':72,'Bosnia y Herzegovina':72,'RD Congo':72,'Catar':71,'Túnez':71,'Ghana':71,'Sudáfrica':71,'Panamá':71,
  'Uzbekistán':70,'Irak':70,'Cabo Verde':70,'Jordania':70,'Arabia Saudita':69,'Nueva Zelanda':68,'Haití':67,'Curazao':67};
+/* ACT_FIFA: basado solo en Ranking FIFA (1 abr 2026). ACT_ODDS: basado solo en odds de apuestas (jun 2026). */
+const ACT_FIFA={
+ 'Francia':92,'España':90,'Argentina':88,'Inglaterra':87,'Portugal':85,'Brasil':85,'Países Bajos':84,'Marruecos':83,'Bélgica':82,'Alemania':82,
+ 'Croacia':80,'Colombia':79,'Senegal':78,'Uruguay':78,'México':77,'Japón':77,'Estados Unidos':76,'Suiza':76,'Noruega':75,'Turquía':74,
+ 'Ecuador':74,'Irán':74,'Corea del Sur':73,'Austria':73,'Costa de Marfil':73,'Chequia':72,'Australia':72,'Egipto':72,'Suecia':72,'Argelia':72,
+ 'Canadá':71,'Paraguay':71,'Escocia':71,'Bosnia y Herzegovina':71,'RD Congo':71,'Catar':70,'Túnez':70,'Ghana':70,'Sudáfrica':70,'Panamá':70,
+ 'Uzbekistán':69,'Irak':69,'Cabo Verde':69,'Jordania':69,'Arabia Saudita':68,'Nueva Zelanda':67,'Haití':66,'Curazao':66};
+const ACT_ODDS={
+ 'España':92,'Francia':90,'Inglaterra':88,'Brasil':86,'Portugal':85,'Argentina':84,'Alemania':82,'Países Bajos':81,'Bélgica':80,'Noruega':79,
+ 'Croacia':78,'Marruecos':77,'Colombia':76,'Uruguay':75,'México':74,'Japón':73,'Estados Unidos':72,'Suiza':72,'Turquía':71,'Ecuador':71,
+ 'Irán':70,'Corea del Sur':70,'Austria':70,'Senegal':70,'Costa de Marfil':69,'Chequia':69,'Australia':69,'Egipto':69,'Suecia':69,'Argelia':69,
+ 'Canadá':68,'Paraguay':68,'Escocia':68,'Bosnia y Herzegovina':68,'RD Congo':68,'Catar':67,'Túnez':67,'Ghana':67,'Sudáfrica':67,'Panamá':67,
+ 'Uzbekistán':66,'Irak':66,'Cabo Verde':66,'Jordania':66,'Arabia Saudita':66,'Nueva Zelanda':66,'Haití':66,'Curazao':66};
 const FIFA_TOP=['Francia','España','Argentina','Inglaterra','Portugal','Brasil','Países Bajos','Marruecos','Bélgica','Alemania'];
 const ODDS_TOP=['España','Francia','Inglaterra','Brasil','Portugal','Argentina','Alemania','Países Bajos','Bélgica','Noruega'];
 const HOSTS={'México':1,'Estados Unidos':1,'Canadá':1};
-function POW(t){const s=getSim();const w=s.wHist;const h=HIST[t]||70,a=ACT[t]||72;return w*h+(1-w)*a;}
+function POW(t){const s=getSim();const w=s.wHist;const h=HIST[t]||70;
+  const src=s.actSrc||'mix';const a=(src==='fifa'?ACT_FIFA[t]:src==='odds'?ACT_ODDS[t]:ACT[t])||72;
+  return w*h+(1-w)*a;}
 function pois(l){l=Math.max(0.04,l);const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math.random();}while(p>L);return Math.min(k-1,7);}
 function simMatch(home,away,knockout){
   const pH=POW(home),pA=POW(away),g=pH-pA;const s=getSim();
@@ -321,7 +364,7 @@ const STORE_KEY='fixture2026_v2';let mem={};
 function loadStore(){try{const s=localStorage.getItem(STORE_KEY);return s?JSON.parse(s):{};}catch(e){return mem;}}
 function saveStore(o){mem=o;try{localStorage.setItem(STORE_KEY,JSON.stringify(o));}catch(e){}}
 let STATE=loadStore();STATE.results=STATE.results||{};STATE.adv=STATE.adv||{};STATE.pens=STATE.pens||{};STATE.sim=STATE.sim||{};
-function getSim(){STATE.sim=STATE.sim||{};const s=STATE.sim;if(s.det==null)s.det=false;if(s.K==null)s.K=4.4;if(s.wHist==null)s.wHist=0.5;if(s.base==null)s.base=1.28;return s;}
+function getSim(){STATE.sim=STATE.sim||{};const s=STATE.sim;if(s.det==null)s.det=false;if(s.K==null)s.K=4.4;if(s.wHist==null)s.wHist=0.5;if(s.base==null)s.base=1.28;if(s.actSrc==null)s.actSrc='mix';return s;}
 function persist(){saveStore(STATE);}
 
 /* ---------- dates ---------- */
@@ -352,14 +395,23 @@ function closeModal(){document.getElementById('modalBg').classList.remove('show'
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 /* ---------- randomness settings ---------- */
 function applySimUI(){const s=getSim();const sl=document.getElementById('azarSlider');if(sl)sl.value=s.det?8:s.K;
-  document.querySelectorAll('#presets button').forEach(b=>{const on=(b.dataset.mode==='det'&&s.det)||(!s.det&&b.dataset.k&&Math.abs(+b.dataset.k-s.K)<0.05);b.classList.toggle('on',on);});
+  let matched=false;document.querySelectorAll('#presets button').forEach(b=>{let on=false;if(!matched){if(b.dataset.mode==='det'&&s.det){on=true;matched=true;}else if(!s.det&&b.dataset.k&&Math.abs(+b.dataset.k-s.K)<0.05){on=true;matched=true;}}b.classList.toggle('on',on);});
   const v=document.getElementById('azarVal');if(v)v.textContent=s.det?'Modo: siempre ganan los más fuertes (sin azar)':('Nivel de lógica: '+s.K.toFixed(1)+' / 8 (más alto = menos sorpresas)');
-  const hs=document.getElementById('histSlider');if(hs)hs.value=Math.round(s.wHist*100);
-  const hv=document.getElementById('histVal');if(hv)hv.textContent='Historia '+Math.round(s.wHist*100)+'% · Actualidad '+Math.round((1-s.wHist)*100)+'%';
+  const wPct=Math.round(s.wHist*100);
+  document.querySelectorAll('#histBtns button').forEach(b=>b.classList.toggle('on',+b.dataset.w===wPct));
+  document.querySelectorAll('#actBtns button').forEach(b=>b.classList.toggle('on',b.dataset.act===(s.actSrc||'mix')));
   const cs=document.getElementById('champSel');if(cs)cs.value=s.champ||'';}
-(function(){const sel=document.getElementById('champSel');if(!sel)return;Object.keys(DATA.groups).forEach(g=>{const og=document.createElement('optgroup');og.label='Grupo '+g;DATA.groups[g].forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;og.appendChild(o);});sel.appendChild(og);});
+(function(){const sel=document.getElementById('champSel');if(!sel)return;
+  const oArg=document.createElement('option');oArg.value='Argentina';oArg.textContent='🇦🇷 Argentina';sel.appendChild(oArg);
+  const ogTop=document.createElement('optgroup');ogTop.label='Principales candidatos';
+  ['España','Francia','Inglaterra'].forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;ogTop.appendChild(o);});sel.appendChild(ogTop);
+  const skip=new Set(['Argentina','España','Francia','Inglaterra']);
+  Object.keys(DATA.groups).forEach(g=>{const og=document.createElement('optgroup');og.label='Grupo '+g;
+    DATA.groups[g].filter(t=>!skip.has(t)).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;og.appendChild(o);});
+    if(og.childElementCount>0)sel.appendChild(og);});
   sel.addEventListener('change',e=>{getSim().champ=e.target.value||null;persist();toast(e.target.value?('Campeón forzado: '+e.target.value):'Campeón forzado quitado');});})();
-document.getElementById('histSlider').addEventListener('input',e=>{getSim().wHist=(+e.target.value)/100;persist();applySimUI();});
+document.getElementById('histBtns').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;getSim().wHist=+b.dataset.w/100;persist();applySimUI();toast('Ponderación actualizada — volvé a simular');});
+document.getElementById('actBtns').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;getSim().actSrc=b.dataset.act;persist();applySimUI();toast('Fuente: '+b.textContent.trim()+' — volvé a simular');});
 /* info / how it works */
 function teamPow(){const a=[];Object.keys(DATA.groups).forEach(g=>DATA.groups[g].forEach(t=>a.push({t,g})));return a;}
 function teamGroupOf(t){return Object.keys(DATA.groups).find(g=>DATA.groups[g].includes(t));}
@@ -438,7 +490,8 @@ function sanitizeScore(v){if(v===''||v==null)return '';let n=Math.floor(Math.abs
 function clearKO(){let had=false;DATA.koMatches.forEach(m=>{if(STATE.results[m.id]!=null)had=true;delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});return had;}
 function mkInput(m,side){const r=STATE.results[m.id]||{};const inp=document.createElement('input');inp.type='number';inp.min=0;inp.max=30;inp.step=1;inp.inputMode='numeric';
   inp.value=(side==='h'?(r.h??''):(r.a??''));
-  inp.addEventListener('change',()=>{const val=sanitizeScore(inp.value);inp.value=val;const cur=STATE.results[m.id]||{h:'',a:''};cur[side]=val;STATE.results[m.id]=cur;
+  if(r.src==='api')inp.classList.add('api');
+  inp.addEventListener('change',()=>{const val=sanitizeScore(inp.value);inp.value=val;inp.classList.remove('api');const cur=STATE.results[m.id]||{h:'',a:''};cur[side]=val;delete cur.src;STATE.results[m.id]=cur;
     if(m.id[0]==='G'){if(clearKO())toast('Llaves reiniciadas por el cambio en grupos');}
     persist();rerender();});
   return inp;}
@@ -656,13 +709,21 @@ async function updateResults(){
   let updated=0,err=0;
   for(const d of want){try{const res=await fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d='+d+'&s=Soccer');const j=await res.json();const evs=(j&&j.events)||[];
     evs.forEach(e=>{const h=toOurs(e.strHomeTeam),a=toOurs(e.strAwayTeam);if(!h||!a)return;const m=findGroupMatch(h,a,d);if(!m)return;
-      if(e.intHomeScore!=null&&e.intAwayScore!=null&&e.intHomeScore!==''&&e.intAwayScore!==''){let hh=+e.intHomeScore,aa=+e.intAwayScore;if(m.home===a&&m.away===h){const t=hh;hh=aa;aa=t;}STATE.results[m.id]={h:hh,a:aa};updated++;}});
+      if(e.intHomeScore!=null&&e.intAwayScore!=null&&e.intHomeScore!==''&&e.intAwayScore!==''){let hh=+e.intHomeScore,aa=+e.intAwayScore;if(m.home===a&&m.away===h){const t=hh;hh=aa;aa=t;}STATE.results[m.id]={h:hh,a:aa,src:'api'};updated++;}});
   }catch(ex){err++;}}
   persist();rerender();btn.disabled=false;btn.innerHTML='&#8635; Actualizar';
   if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');}
   else if(err>0){note.textContent='No se pudo conectar a la API';toast('&#9888;&#65039; API no disponible ahora');}
   else{note.textContent='Sin partidos nuevos';toast('Sin resultados nuevos (cargá a mano)');}}
 document.getElementById('btnUpd').onclick=updateResults;
+
+/* ---------- tema claro/oscuro ---------- */
+(function(){try{if(localStorage.getItem('theme2026')==='light')document.body.classList.add('light');}catch(e){}
+  const btn=document.getElementById('btnTheme');if(!btn)return;
+  btn.textContent=document.body.classList.contains('light')?'🌙':'☀️';
+  btn.onclick=()=>{document.body.classList.toggle('light');const isLight=document.body.classList.contains('light');
+    try{localStorage.setItem('theme2026',isLight?'light':'dark');}catch(e){}
+    btn.textContent=isLight?'🌙':'☀️';};})();
 
 /* ---------- boot ---------- */
 renderChips();rerender();
