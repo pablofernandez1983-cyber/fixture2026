@@ -467,8 +467,8 @@ function koWinnerLoser(no){const m=DATA.koMatches.find(x=>x.no===no);const r=koR
   const ph=penOf(no,'home'),pa=penOf(no,'away');if(ph!=null&&pa!=null&&ph!==pa)return ph>pa?{w:home,l:away}:{w:away,l:home};
   const a=STATE.adv[m.id];if(a==='home')return{w:home,l:away};if(a==='away')return{w:away,l:home};return{w:null,l:null};}
 function resolveSlot(slot,mno){
-  if(slot.t==='W'){const g=_G[slot.g];return g&&g.complete?g.rows[0].team:null;}
-  if(slot.t==='R'){const g=_G[slot.g];return g&&g.complete?g.rows[1].team:null;}
+  if(slot.t==='W'){const g=_G[slot.g];if(!g||g.rows.every(r=>r.P===0))return null;return g.rows[0].team;}
+  if(slot.t==='R'){const g=_G[slot.g];if(!g||g.rows.every(r=>r.P===0))return null;return g.rows[1].team;}
   if(slot.t==='T'){if(_T&&_T.allComplete&&_T.assign[mno])return _G[_T.assign[mno]].rows[2].team;return null;}
   if(slot.t==='M')return koWinnerLoser(slot.m).w;
   if(slot.t==='ML')return koWinnerLoser(slot.m).l;
