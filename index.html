@@ -22,9 +22,7 @@ h1,h2,h3{margin:0;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-we
 .header{position:sticky;top:0;z-index:100;background:linear-gradient(180deg,#010D1E 72%,rgba(1,13,30,0));padding:14px 0 6px}
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;max-width:680px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:10px}
-.brand .ball{font-size:26px}
-.brand h1{font-size:26px;line-height:.9;color:#fff}
-.brand .sub{font-family:'Barlow Condensed',sans-serif;color:var(--gold);font-size:13px;letter-spacing:2px;text-transform:uppercase;font-weight:700}
+.brand h1{font-size:22px;line-height:1;color:#fff}
 .upd{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .btn-upd{background:var(--gold);color:#06121f;border:none;border-radius:10px;padding:9px 12px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1.5px;cursor:pointer;display:flex;align-items:center;gap:6px}
 .btn-upd:active{transform:scale(.96)}
@@ -205,15 +203,15 @@ body.light .bs{color:var(--text)}
 <div class="header">
   <div class="header-top">
     <div class="brand">
-      <span class="ball">&#9917;</span>
-      <div><h1>FIXTURE 2026</h1><div class="sub">Hora Argentina &middot; Mi Mundial</div></div>
+      <img src="icon-192.png" style="height:46px;width:46px;border-radius:10px;object-fit:cover">
+      <h1>Fixture Mundial 2026</h1>
     </div>
     <div class="upd">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn-theme" id="btnTheme" title="Cambiar tema">&#9728;&#65039;</button>
         <button class="btn-upd" id="btnUpd">&#8635; Actualizar</button>
       </div>
-      <div class="updnote" id="updNote">Best-effort &middot; solo grupos &middot; no oficial</div>
+      <div class="updnote" id="updNote"></div>
     </div>
   </div>
   <div class="wrap">
@@ -559,7 +557,7 @@ function renderKoList(){
 /* ---------- KO graphic (bracket tree) ---------- */
 const FEEDERS={};DATA.koMatches.forEach(m=>{const f=[];['home','away'].forEach(s=>{if(m[s].t==='M')f.push(m[s].m);});FEEDERS[m.no]=f;});
 const ROUNDCOL={R32:0,R16:1,QF:2,SF:3,F:4};
-const BOXH=46,SLOT=58,COLW=132,STEPX=170,HEADH=24,PADT=6;
+const BOXH=56,SLOT=70,COLW=132,STEPX=170,HEADH=24,PADT=6;
 const LAYOUT={};
 (function(){let leaf=0;
   function dfs(no){const f=FEEDERS[no]||[];if(f.length===0){const cy=HEADH+PADT+leaf*SLOT+SLOT/2;LAYOUT[no]={col:0,cy};leaf++;return cy;}
