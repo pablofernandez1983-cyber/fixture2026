@@ -61,7 +61,7 @@ Las 104 fechas/sedes/horarios y la estructura del cuadro (feeders no secuenciale
 - Asignación de mejores terceros: válida (respeta elegibilidad) pero **aproxima** la tabla oficial FIFA (495 combinaciones no publicadas de forma verificable).
 - Desempates de grupos **simplificados** (sin head-to-head/fair play/sorteo).
 - "Actualizar" depende de que TheSportsDB tenga el dato (el cron de Supabase lo captura cada hora, así que el riesgo de la ventana de ~15 eventos quedó cubierto) → si falta algo, carga manual.
-- El cron `wc_sync_daily` queda corriendo después de la final (19 jul 2026); conviene borrarlo entonces: `select cron.unschedule('wc_sync_daily');` en el proyecto Supabase del álbum.
+- El cron `wc_sync_daily` se **borra solo**: a partir del 21 jul 2026 (la final es el 19, la última sincronización útil corre el 20 a las 09:07 UTC) el propio job ejecuta `cron.unschedule('wc_sync_daily')` en lugar del sync. No hace falta limpiar nada a mano.
 - Localía: plus fijo chico, no ajustable (se decidió que casi no importa).
 
 ## Gotchas
