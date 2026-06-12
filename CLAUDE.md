@@ -46,7 +46,7 @@ App web de **un solo archivo** (`index.html`) para seguir el Mundial 2026 en **h
 - **Detalle de partido** (`openMatch`): modal con ronda, equipos, marcador, penales, día completo, hora ARG, sede.
 - **Ajustes de azar** (`#cfgBg`, `applySimUI`): presets (det / K=7 / 4.4 / 3 / 1.6), slider de azar (K 1.2–8; ≥7.9 = det), slider **Historia↔Actualidad** (`wHist`), y selector de **campeón forzado**.
 - **¿Cómo funciona?** (`renderInfo`): explica el modelo y muestra 4 rankings — Historia, Ranking FIFA, Apuestas, y la Mezcla del simulador — con sus fuentes.
-- **Actualizar** (`updateResults`): vía TheSportsDB key libre `'3'`, liga **FIFA World Cup = id 4429**: `eventsseason.php?id=4429&s=2026` (ventana de ~15 eventos) + `eventspastleague.php?id=4429` (últimos finalizados). Solo aplica partidos **terminados** (`strStatus` FT/AET/PEN), matchea por nombre (mapa `ALIAS`, `norm()` baja a minúsculas y convierte guiones en espacios) + kickoff a ±2 días del evento. No pisa un resultado idéntico (el contador refleja cambios reales). **Solo grupos**. Ojo: `eventsday.php` NO sirve — la key gratis lo limita a ~3 eventos por día (así se rompió la primera vez).
+- **Actualizar** (`updateResults`): fuente principal **Supabase** (proyecto del álbum, `zqwkznlgbkofsrygqezk`): edge function **`wc-sync`** que consulta TheSportsDB (liga FIFA World Cup = **4429**: `eventsseason` + `eventspastleague`), upserta partidos terminados en la tabla **`wc_results`** (RLS, solo lectura pública) y devuelve el historial completo. Un **pg_cron** (`wc_sync_hourly`, minuto 7 de cada hora) la llama solo → no se pierde nada aunque la app no se abra en días. Fallbacks en cadena: tabla `wc_results` por REST → TheSportsDB directo (ventana ~15 eventos). `applyEvents` aplica **grupos y Fase Final**: matchea por par de equipos (mapa `ALIAS`, `norm()` minúsculas + guiones→espacios) con kickoff a ±26 h; en KO resuelve equipos con `resolveKoTeam` (requiere grupos cargados) y si el evento empata deja penales/avanza para carga manual. No pisa resultados idénticos. Ojo: `eventsday.php` NO sirve — la key gratis lo limita a ~3 eventos/día (así se rompió la primera vez).
 
 ## Fuentes de los ratings (dejar siempre citado/aclarado en la app)
 - **HIST (Historia/Mundiales)**: títulos (Brasil 5, Alemania 4, Argentina 3, Francia/Uruguay 2, Inglaterra/España 1) + tabla all-time de Mundiales (FIFA, planetfootball/Statista). Arriba Brasil y Alemania.
@@ -60,7 +60,8 @@ Las 104 fechas/sedes/horarios y la estructura del cuadro (feeders no secuenciale
 ## Limitaciones conocidas / decisiones
 - Asignación de mejores terceros: válida (respeta elegibilidad) pero **aproxima** la tabla oficial FIFA (495 combinaciones no publicadas de forma verificable).
 - Desempates de grupos **simplificados** (sin head-to-head/fair play/sorteo).
-- "Actualizar" depende de que TheSportsDB tenga el dato; la ventana de `eventsseason` es de ~15 eventos, así que conviene actualizar cada 2–3 días como máximo durante la fase de grupos para no perder resultados viejos → si falta algo, carga manual.
+- "Actualizar" depende de que TheSportsDB tenga el dato (el cron de Supabase lo captura cada hora, así que el riesgo de la ventana de ~15 eventos quedó cubierto) → si falta algo, carga manual.
+- El cron `wc_sync_hourly` queda corriendo después de la final (19 jul 2026); conviene borrarlo entonces: `select cron.unschedule('wc_sync_hourly');` en el proyecto Supabase del álbum.
 - Localía: plus fijo chico, no ajustable (se decidió que casi no importa).
 
 ## Gotchas
@@ -72,5 +73,4 @@ Las 104 fechas/sedes/horarios y la estructura del cuadro (feeders no secuenciale
 
 ## Ideas/pendientes (opcionales)
 - Refrescar valores de HIST/ACT con el ranking FIFA del 9–11 jun 2026 (sale justo antes del Mundial) y odds más recientes, citando.
-- Soporte de actualización de **eliminatorias** vía API (hoy solo grupos).
 - Compartir/exportar un cuadro simulado (imagen o link).
