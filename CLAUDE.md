@@ -16,7 +16,7 @@ App web de **un solo archivo** (`index.html`) para seguir el Mundial 2026 en **h
 
 ## Estructura de `index.html` (~670 líneas)
 1. `<head>`: meta/viewport (zoom habilitado), fuentes, **todo el CSS** en un `<style>`.
-2. `<body>`: header (marca + botón Actualizar), tabs (Grupos / Eliminatorias / Argentina), contenedores de cada vista, `#championBanner`, toast, y 3 modales: `#modalBg` (detalle de partido), `#cfgBg` (ajustes de azar), `#infoBg` (¿Cómo funciona?).
+2. `<body>`: header (marca + botón Actualizar), tabs (Hoy / Grupos / Fase Final / Argentina; "Hoy" es la default), contenedores de cada vista, `#championBanner`, toast, y 3 modales: `#modalBg` (detalle de partido), `#cfgBg` (ajustes de azar), `#infoBg` (¿Cómo funciona?).
 3. `<script>`: `const DATA = {...}` embebido + toda la lógica.
 
 ### Datos (`DATA`, embebido)
@@ -39,13 +39,14 @@ App web de **un solo archivo** (`index.html`) para seguir el Mundial 2026 en **h
 - **Tablas**: `computeGroup(g)` (desempates: pts, dif. gol, GF, **fuerza POW**, alfabético), `allGroups()`, `thirdAssignment(G)` (rankea los 12 terceros, toma 8, los asigna a los 8 slots de tercero por **backtracking respetando elegibilidad** — aproxima la tabla oficial FIFA).
 - **Resolución de llaves**: `resolveSlot(slot, matchNo)` resuelve W/R/T/M/ML a un equipo (los `T` usan `_T.assign[matchNo]`). `koWinnerLoser(no)` decide ganador (marcador → penales → adv). `resolveKoTeam(m,side)` = `{team,label}`. `recompute()` recalcula `_G` (grupos) y `_T` (terceros) y debe llamarse antes de re-render.
 - **Forzar campeón**: `forceGroupWin(team)` (gana su grupo) + `simKnockouts(forced)` (gana todos sus partidos). Lo dispara `simAllBtn`/`simKoBtn` si `STATE.sim.champ` está seteado.
-- **Render**: `rerender()` = `recompute()` + `renderGroups()` + `renderKoList()` + `renderBracketGraph()` + `renderKoStatus()` + `renderArg()` + `updateChampion()`. Llamar **siempre `rerender()`** tras cambiar estado.
+- **Render**: `rerender()` = `recompute()` + `renderHoy()` + `renderGroups()` + `renderKoList()` + `renderBracketGraph()` + `renderKoStatus()` + `renderArg()` + `updateChampion()`. Llamar **siempre `rerender()`** tras cambiar estado.
+- **Solapa Hoy** (`renderHoy`): partidos del día en curso (día ART vía `dayKey`): los de grupos con `matchRow` (editables) y los de Fase Final como filas clickeables → `openMatch`. Si no hay partidos, muestra el próximo día con partidos.
 - **Sección Argentina** (`renderArg`): estado en Grupo J, partidos de grupo, **camino real** según la simulación, y **escenarios** si sale 1º / 2º / 3º. Para 3º muestra los **5 caminos completos** posibles (slots M80/M81/M82/M85/M87) con `buildRoute()`. `argR32Starts()` detecta los slots de J en R32.
 - **Cuadro gráfico** (`renderBracketGraph`): árbol absoluto con conectores SVG. Layout se computa una vez por DFS desde el partido 104 (`LAYOUT`, `FEEDERS`). El **3er puesto** es un recuadro chico, punteado y atenuado debajo de la final. Cada caja es clickeable → `openMatch(no)` (modal con día/hora ARG/sede).
 - **Detalle de partido** (`openMatch`): modal con ronda, equipos, marcador, penales, día completo, hora ARG, sede.
 - **Ajustes de azar** (`#cfgBg`, `applySimUI`): presets (det / K=7 / 4.4 / 3 / 1.6), slider de azar (K 1.2–8; ≥7.9 = det), slider **Historia↔Actualidad** (`wHist`), y selector de **campeón forzado**.
 - **¿Cómo funciona?** (`renderInfo`): explica el modelo y muestra 4 rankings — Historia, Ranking FIFA, Apuestas, y la Mezcla del simulador — con sus fuentes.
-- **Actualizar** (`updateResults`): best-effort vía TheSportsDB (key libre `'3'`, `eventsday.php`), matchea por nombre (mapa `ALIAS`) + fecha. **Solo grupos**, no oficial. La carga manual es el camino confiable.
+- **Actualizar** (`updateResults`): vía TheSportsDB key libre `'3'`, liga **FIFA World Cup = id 4429**: `eventsseason.php?id=4429&s=2026` (ventana de ~15 eventos) + `eventspastleague.php?id=4429` (últimos finalizados). Solo aplica partidos **terminados** (`strStatus` FT/AET/PEN), matchea por nombre (mapa `ALIAS`, `norm()` baja a minúsculas y convierte guiones en espacios) + kickoff a ±2 días del evento. No pisa un resultado idéntico (el contador refleja cambios reales). **Solo grupos**. Ojo: `eventsday.php` NO sirve — la key gratis lo limita a ~3 eventos por día (así se rompió la primera vez).
 
 ## Fuentes de los ratings (dejar siempre citado/aclarado en la app)
 - **HIST (Historia/Mundiales)**: títulos (Brasil 5, Alemania 4, Argentina 3, Francia/Uruguay 2, Inglaterra/España 1) + tabla all-time de Mundiales (FIFA, planetfootball/Statista). Arriba Brasil y Alemania.
@@ -59,7 +60,7 @@ Las 104 fechas/sedes/horarios y la estructura del cuadro (feeders no secuenciale
 ## Limitaciones conocidas / decisiones
 - Asignación de mejores terceros: válida (respeta elegibilidad) pero **aproxima** la tabla oficial FIFA (495 combinaciones no publicadas de forma verificable).
 - Desempates de grupos **simplificados** (sin head-to-head/fair play/sorteo).
-- "Actualizar" depende de que TheSportsDB tenga el dato; puede fallar (CORS/datos faltantes) → manual primero.
+- "Actualizar" depende de que TheSportsDB tenga el dato; la ventana de `eventsseason` es de ~15 eventos, así que conviene actualizar cada 2–3 días como máximo durante la fase de grupos para no perder resultados viejos → si falta algo, carga manual.
 - Localía: plus fijo chico, no ajustable (se decidió que casi no importa).
 
 ## Gotchas

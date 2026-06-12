@@ -216,7 +216,8 @@ body.light .bs{color:var(--text)}
   </div>
   <div class="wrap">
     <div class="tabs">
-      <div class="tab active" data-v="grupos">Grupos</div>
+      <div class="tab active" data-v="hoy">Hoy</div>
+      <div class="tab" data-v="grupos">Grupos</div>
       <div class="tab" data-v="llaves">Fase Final</div>
       <div class="tab" data-v="arg">Argentina</div>
     </div>
@@ -225,7 +226,8 @@ body.light .bs{color:var(--text)}
 
 <div class="wrap">
   <div id="championBanner" class="champ hidden"></div>
-  <div id="view-grupos">
+  <div id="view-hoy"></div>
+  <div id="view-grupos" class="hidden">
     <div class="chips" id="chips"></div>
     <div class="legend">
       <span><i class="dotg q1"></i>1&deg;</span><span><i class="dotg q2"></i>2&deg;</span><span><i class="dotg q3"></i>mejor 3&deg;</span>
@@ -602,6 +604,31 @@ function renderKoStatus(){
   msg+='<br><span style="font-size:12px">* Los 8 mejores 3&deg; se asignan respetando la elegibilidad por grupo (aproxima la tabla oficial FIFA). Edit&aacute; marcadores en la pesta&ntilde;a Lista.</span>';
   document.getElementById('koStatus').innerHTML=msg;}
 
+/* ---------- Hoy (partidos del día) ---------- */
+function renderHoy(){
+  const cont=document.getElementById('view-hoy');if(!cont)return;cont.innerHTML='';
+  const today=dayKey(new Date().toISOString());
+  let fecha=fmtFull.format(new Date());fecha=fecha.charAt(0).toUpperCase()+fecha.slice(1);
+  const gm=DATA.groupMatches.filter(m=>dayKey(m.kickoff)===today).sort((x,y)=>new Date(x.kickoff)-new Date(y.kickoff));
+  const km=DATA.koMatches.filter(m=>dayKey(m.kickoff)===today).sort((x,y)=>new Date(x.kickoff)-new Date(y.kickoff));
+  const n=gm.length+km.length;
+  const card=el(`<div class="card"></div>`);
+  card.appendChild(el(`<div class="card-h"><h2>${fecha}</h2><span class="tag">${n===0?'Sin partidos':n+' partido'+(n!==1?'s':'')}</span></div>`));
+  if(n===0){
+    const fut=DATA.groupMatches.concat(DATA.koMatches).filter(m=>new Date(m.kickoff).getTime()>Date.now());
+    if(fut.length){const nextDay=fut.map(m=>dayKey(m.kickoff)).sort()[0];const cnt=fut.filter(m=>dayKey(m.kickoff)===nextDay).length;
+      let nf=fmtFull.format(new Date(nextDay+'T15:00:00Z'));nf=nf.charAt(0).toUpperCase()+nf.slice(1);
+      card.appendChild(el(`<div class="note">Hoy no juega nadie. Pr&oacute;ximo d&iacute;a de partidos: <b style="color:var(--gold)">${nf}</b> (${cnt} partido${cnt!==1?'s':''}).</div>`));}
+    else card.appendChild(el(`<div class="note">El Mundial ya termin&oacute;.</div>`));
+  }else{
+    gm.forEach(m=>{card.appendChild(matchRow(m));card.appendChild(el(`<div class="m-venue">Grupo ${m.group} &middot; ${m.venue}</div>`));});
+    km.forEach(m=>{const w=whenHtml(m.kickoff),st=status(m.kickoff);const hi=resolveKoTeam(m,'home'),ai=resolveKoTeam(m,'away');const r=koResult(m.no);
+      const row=el(`<div class="arow" style="cursor:pointer"><div class="ar-r">${m.no===104?'Final':roundShort(m.round)}</div><div class="ar-o">${hi.team||hi.label} ${r?`<span class="res">${r.h}-${r.a}</span>`:'vs'} ${ai.team||ai.label}<br><span style="color:var(--muted);font-size:12px">&#128205; ${m.venue}</span></div><div class="ar-w">${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d+'<br>'+w.t}</div></div>`);
+      row.onclick=()=>openMatch(m.no);card.appendChild(row);});
+    card.appendChild(el(`<div class="note">Horarios en hora argentina. Toc&aacute; <b>&#8635; Actualizar</b> (arriba) para traer los resultados, o cargalos a mano.</div>`));
+  }
+  cont.appendChild(card);}
+
 /* ---------- Argentina section ---------- */
 function roundShort(c){return ({R32:'16avos',R16:'8vos',QF:'4tos',SF:'Semi','3P':'3er P',F:'Final'})[c]||c;}
 function argR32Starts(){let first=null,second=null;const thirds=[];
@@ -655,7 +682,7 @@ function updateChampion(){const champ=koWinnerLoser(104).w;const cb=document.get
   if(champ){cb.classList.remove('hidden');cb.innerHTML=`<div class="lbl">Campe&oacute;n del Mundo 2026</div><div class="name">${champ===ARG?'&#127462;&#127479; ':''}${champ} &#127942;</div><div class="sub">Final &middot; MetLife Stadium &middot; 19 jul</div>`;}
   else cb.classList.add('hidden');}
 
-function rerender(){recompute();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();updateChampion();}
+function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();updateChampion();}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
@@ -665,8 +692,9 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
     ch.onclick=()=>{CUR_GROUP=g;renderChips();renderGroups();};c.appendChild(ch);});}
 
 /* ---------- tabs ---------- */
+const VIEWS=['hoy','grupos','llaves','arg'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
-  const v=t.dataset.v;document.getElementById('view-grupos').classList.toggle('hidden',v!=='grupos');document.getElementById('view-llaves').classList.toggle('hidden',v!=='llaves');document.getElementById('view-arg').classList.toggle('hidden',v!=='arg');});
+  const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
@@ -696,24 +724,33 @@ document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los 
 document.getElementById('resetKoBtn').onclick=()=>{if(confirm('¿Borrar solo los resultados de Fase Final?')){DATA.koMatches.forEach(m=>{delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});persist();rerender();toast('Fase Final borrada');}};
 
 /* ---------- live update (best-effort, TheSportsDB free) ---------- */
-const ALIAS={'mexico':'México','south africa':'Sudáfrica','south korea':'Corea del Sur','korea republic':'Corea del Sur','czechia':'Chequia','czech republic':'Chequia','canada':'Canadá','bosnia and herzegovina':'Bosnia y Herzegovina','bosnia':'Bosnia y Herzegovina','qatar':'Catar','switzerland':'Suiza','brazil':'Brasil','morocco':'Marruecos','haiti':'Haití','scotland':'Escocia','united states':'Estados Unidos','usa':'Estados Unidos','paraguay':'Paraguay','australia':'Australia','turkey':'Turquía','turkiye':'Turquía','türkiye':'Turquía','germany':'Alemania','curacao':'Curazao','curaçao':'Curazao','ivory coast':'Costa de Marfil',"côte d'ivoire":'Costa de Marfil','ecuador':'Ecuador','netherlands':'Países Bajos','holland':'Países Bajos','japan':'Japón','sweden':'Suecia','tunisia':'Túnez','belgium':'Bélgica','egypt':'Egipto','iran':'Irán','new zealand':'Nueva Zelanda','spain':'España','cape verde':'Cabo Verde','cabo verde':'Cabo Verde','saudi arabia':'Arabia Saudita','uruguay':'Uruguay','france':'Francia','senegal':'Senegal','iraq':'Irak','norway':'Noruega','argentina':'Argentina','algeria':'Argelia','austria':'Austria','jordan':'Jordania','portugal':'Portugal','dr congo':'RD Congo','democratic republic of congo':'RD Congo','congo dr':'RD Congo','uzbekistan':'Uzbekistán','colombia':'Colombia','england':'Inglaterra','croatia':'Croacia','ghana':'Ghana','panama':'Panamá'};
-function norm(s){return (s||'').toLowerCase().replace(/\./g,'').trim();}
+const ALIAS={'mexico':'México','south africa':'Sudáfrica','south korea':'Corea del Sur','korea republic':'Corea del Sur','czechia':'Chequia','czech republic':'Chequia','canada':'Canadá','bosnia and herzegovina':'Bosnia y Herzegovina','bosnia herzegovina':'Bosnia y Herzegovina','bosnia':'Bosnia y Herzegovina','qatar':'Catar','switzerland':'Suiza','brazil':'Brasil','morocco':'Marruecos','haiti':'Haití','scotland':'Escocia','united states':'Estados Unidos','usa':'Estados Unidos','paraguay':'Paraguay','australia':'Australia','turkey':'Turquía','turkiye':'Turquía','türkiye':'Turquía','germany':'Alemania','curacao':'Curazao','curaçao':'Curazao','ivory coast':'Costa de Marfil',"côte d'ivoire":'Costa de Marfil','ecuador':'Ecuador','netherlands':'Países Bajos','holland':'Países Bajos','japan':'Japón','sweden':'Suecia','tunisia':'Túnez','belgium':'Bélgica','egypt':'Egipto','iran':'Irán','new zealand':'Nueva Zelanda','spain':'España','cape verde':'Cabo Verde','cabo verde':'Cabo Verde','saudi arabia':'Arabia Saudita','uruguay':'Uruguay','france':'Francia','senegal':'Senegal','iraq':'Irak','norway':'Noruega','argentina':'Argentina','algeria':'Argelia','austria':'Austria','jordan':'Jordania','portugal':'Portugal','dr congo':'RD Congo','democratic republic of congo':'RD Congo','congo dr':'RD Congo','uzbekistan':'Uzbekistán','colombia':'Colombia','england':'Inglaterra','croatia':'Croacia','ghana':'Ghana','panama':'Panamá'};
+function norm(s){return (s||'').toLowerCase().replace(/\./g,'').replace(/-/g,' ').trim();}
 function toOurs(n){return ALIAS[norm(n)]||null;}
-function findGroupMatch(home,away,dk){return DATA.groupMatches.find(m=>((m.home===home&&m.away===away)||(m.home===away&&m.away===home))&&dayKey(m.kickoff)===dk);}
+/* Liga "FIFA World Cup" en TheSportsDB = 4429. La key gratis '3' limita eventsday a ~3
+   eventos (por eso dejó de funcionar), pero los endpoints por liga sí traen el Mundial:
+   eventsseason (ventana de ~15 eventos de la temporada) + eventspastleague (últimos finalizados). */
+const API_URLS=['https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=4429&s=2026','https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=4429'];
+const DONE_STATUS={'FT':1,'AET':1,'PEN':1,'Match Finished':1,'Finished':1};
+function eventTime(e){if(e.strTimestamp){const t=Date.parse(/Z$|[+-]\d\d:?\d\d$/.test(e.strTimestamp)?e.strTimestamp:e.strTimestamp+'Z');if(!isNaN(t))return t;}return Date.parse((e.dateEvent||'')+'T12:00:00Z');}
+function findGroupMatch(home,away,t){return DATA.groupMatches.find(m=>((m.home===home&&m.away===away)||(m.home===away&&m.away===home))&&Math.abs(new Date(m.kickoff).getTime()-t)<2*864e5);}
 async function updateResults(){
   const btn=document.getElementById('btnUpd');btn.disabled=true;btn.textContent='Buscando...';const note=document.getElementById('updNote');
-  const now=Date.now();const want=new Set();
-  DATA.groupMatches.forEach(m=>{const t=new Date(m.kickoff).getTime();if(t>=now-2*864e5&&t<=now+864e5)want.add(dayKey(m.kickoff));});
-  if(want.size===0){want.add(dayKey(new Date(now).toISOString()));want.add(dayKey(new Date(now-864e5).toISOString()));}
   let updated=0,err=0;
-  for(const d of want){try{const res=await fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d='+d+'&s=Soccer');const j=await res.json();const evs=(j&&j.events)||[];
-    evs.forEach(e=>{const h=toOurs(e.strHomeTeam),a=toOurs(e.strAwayTeam);if(!h||!a)return;const m=findGroupMatch(h,a,d);if(!m)return;
-      if(e.intHomeScore!=null&&e.intAwayScore!=null&&e.intHomeScore!==''&&e.intAwayScore!==''){let hh=+e.intHomeScore,aa=+e.intAwayScore;if(m.home===a&&m.away===h){const t=hh;hh=aa;aa=t;}STATE.results[m.id]={h:hh,a:aa,src:'api'};updated++;}});
+  for(const u of API_URLS){try{const res=await fetch(u);const j=await res.json();const evs=(j&&j.events)||[];
+    evs.forEach(e=>{
+      if(!DONE_STATUS[e.strStatus]||e.intHomeScore==null||e.intAwayScore==null||e.intHomeScore===''||e.intAwayScore==='')return;
+      const h=toOurs(e.strHomeTeam),a=toOurs(e.strAwayTeam);if(!h||!a)return;
+      const m=findGroupMatch(h,a,eventTime(e));if(!m)return;
+      let hh=+e.intHomeScore,aa=+e.intAwayScore;if(isNaN(hh)||isNaN(aa))return;
+      if(m.home===a&&m.away===h){const t=hh;hh=aa;aa=t;}
+      const prev=STATE.results[m.id];if(prev&&+prev.h===hh&&+prev.a===aa)return;
+      STATE.results[m.id]={h:hh,a:aa,src:'api'};updated++;});
   }catch(ex){err++;}}
   persist();rerender();btn.disabled=false;btn.innerHTML='&#8635; Actualizar';
   if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');}
-  else if(err>0){note.textContent='No se pudo conectar a la API';toast('&#9888;&#65039; API no disponible ahora');}
-  else{note.textContent='Sin partidos nuevos';toast('Sin resultados nuevos (cargá a mano)');}}
+  else if(err===API_URLS.length){note.textContent='No se pudo conectar a la API';toast('&#9888;&#65039; API no disponible ahora');}
+  else{note.textContent='Sin resultados nuevos';toast('Sin resultados nuevos por ahora');}}
 document.getElementById('btnUpd').onclick=updateResults;
 
 /* ---------- tema claro/oscuro ---------- */
