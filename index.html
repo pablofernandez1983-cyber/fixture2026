@@ -799,9 +799,11 @@ async function updateResults(){
     else{const seen=new Set(evts.map(e=>norm(e.home)+'|'+norm(e.away)));tsEvts.forEach(t=>{if(!seen.has(norm(t.home)+'|'+norm(t.away)))evts.push(t);});}}
   btn.disabled=false;btn.innerHTML='&#8635; Actualizar';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
+  const alemFound=evts.some(e=>norm(e.home)==='germany'||norm(e.away)==='germany');
   const updated=applyEvents(evts);persist();rerender();
-  if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');}
-  else{note.textContent='Sin resultados nuevos';toast('Sin resultados nuevos por ahora');}}
+  const dbg=`SB:${sbJ&&Array.isArray(sbJ.results)?sbJ.results.length:'err'} TS:${tsEvts.length} Alem:${alemFound?'SÍ':'NO'} upd:${updated}`;
+  if(updated>0){note.textContent=updated+' partido(s) actualizado(s) · '+dbg;toast('&#9989; '+updated+' resultado(s) actualizados');}
+  else{note.textContent='Sin resultados nuevos · '+dbg;toast('Sin resultados nuevos · '+dbg);}}
 document.getElementById('btnUpd').onclick=updateResults;
 
 /* ---------- tema claro/oscuro ---------- */
