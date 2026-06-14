@@ -752,6 +752,8 @@ const SB_URL='https://zqwkznlgbkofsrygqezk.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpxd2t6bmxnYmtvZnNyeWdxZXprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MTAzMTAsImV4cCI6MjA5MTA4NjMxMH0.GNt-G_RUcxLYCpSqAKKI4KxNU87bBEQAJVCr88R2wQE';
 const SB_HDR={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
 const API_URLS=['https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=4429&s=2026','https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=4429'];
+const ESPN_BASE='https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+function espnEvts(j){const out=[];((j&&j.events)||[]).forEach(ev=>{const comp=(ev.competitions||[])[0];if(!comp)return;if(!(ev.status&&ev.status.type&&ev.status.type.completed))return;const hc=(comp.competitors||[]).find(c=>c.homeAway==='home'),ac=(comp.competitors||[]).find(c=>c.homeAway==='away');if(!hc||!ac)return;const hs=+hc.score,as=+ac.score;if(isNaN(hs)||isNaN(as))return;out.push({home:(hc.team||{}).displayName||'',away:(ac.team||{}).displayName||'',hs,as,time:Date.parse(comp.date||ev.date||'')});});return out;}
 const DONE_STATUS={'FT':1,'AET':1,'PEN':1,'Match Finished':1,'Finished':1};
 function eventTime(e){if(e.strTimestamp){const t=Date.parse(/Z$|[+-]\d\d:?\d\d$/.test(e.strTimestamp)?e.strTimestamp:e.strTimestamp+'Z');if(!isNaN(t))return t;}return Date.parse((e.dateEvent||'')+'T12:00:00Z');}
 const NEAR=26*36e5; /* mismo par de equipos a ±26 h del kickoff = el mismo partido */
@@ -779,24 +781,30 @@ function applyEvents(evts){let updated=0;const usados=new Set();
   return updated;}
 async function updateResults(){
   const btn=document.getElementById('btnUpd');btn.disabled=true;btn.textContent='Buscando...';const note=document.getElementById('updNote');
-  /* Las tres fuentes en paralelo: Supabase wc-sync, TheSportsDB eventsseason y eventspastleague.
-     wc-sync sincroniza y devuelve el historial completo; los dos endpoints de TheSportsDB
-     cubren los resultados del mismo día que todavía no entraron al cron (09:07 UTC). */
-  const [sbRes,...tsRes]=await Promise.allSettled([
+  const ed=d=>d.toISOString().slice(0,10).replace(/-/g,'');const now=Date.now();
+  const ESPN_URLS=[0,1,2].map(i=>ESPN_BASE+'?dates='+ed(new Date(now-i*864e5)));
+  /* Cuatro fuentes en paralelo: Supabase wc-sync, TheSportsDB (2 endpoints), ESPN (últimos 3 días).
+     wc-sync sincroniza y devuelve el historial completo; los demás cubren
+     los resultados del mismo día que todavía no entraron al cron (09:07 UTC). */
+  const [sbRes,...restRes]=await Promise.allSettled([
     fetch(SB_URL+'/functions/v1/wc-sync',{headers:SB_HDR}).then(r=>r.json()).catch(()=>null),
-    ...API_URLS.map(u=>fetch(u).then(r=>r.json()).catch(()=>null))]);
+    ...API_URLS.map(u=>fetch(u).then(r=>r.json()).catch(()=>null)),
+    ...ESPN_URLS.map(u=>fetch(u).then(r=>r.json()).catch(()=>null))]);
   let evts=null;
   const sbJ=sbRes.status==='fulfilled'?sbRes.value:null;
   if(sbJ&&Array.isArray(sbJ.results))evts=sbJ.results.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));
   if(!evts)try{const r=await fetch(SB_URL+'/rest/v1/wc_results?select=home,away,home_score,away_score,kickoff',{headers:SB_HDR});const j=await r.json();
     if(Array.isArray(j))evts=j.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));}catch(e){}
+  const tsRes=restRes.slice(0,2),espRes=restRes.slice(2);
   const tsEvts=tsRes.flatMap(r=>(r.status==='fulfilled'&&r.value&&r.value.events)||[]).reduce((a,e)=>{
     if(!DONE_STATUS[e.strStatus]||e.intHomeScore==null||e.intAwayScore==null||e.intHomeScore===''||e.intAwayScore==='')return a;
     const hs=+e.intHomeScore,as=+e.intAwayScore;if(!isNaN(hs)&&!isNaN(as))a.push({home:e.strHomeTeam,away:e.strAwayTeam,hs,as,time:eventTime(e)});
     return a;},[]);
-  if(tsEvts.length){
-    if(!evts)evts=tsEvts;
-    else{const seen=new Set(evts.map(e=>norm(e.home)+'|'+norm(e.away)));tsEvts.forEach(t=>{if(!seen.has(norm(t.home)+'|'+norm(t.away)))evts.push(t);});}}
+  const esnEvts=espRes.flatMap(r=>r.status==='fulfilled'?espnEvts(r.value):[]);
+  const extraEvts=[...tsEvts,...esnEvts];
+  if(extraEvts.length){
+    if(!evts)evts=extraEvts;
+    else{const seen=new Set(evts.map(e=>norm(e.home)+'|'+norm(e.away)));extraEvts.forEach(t=>{if(!seen.has(norm(t.home)+'|'+norm(t.away)))evts.push(t);});}}
   btn.disabled=false;btn.innerHTML='&#8635; Actualizar';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
   const updated=applyEvents(evts);persist();rerender();
