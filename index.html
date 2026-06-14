@@ -779,24 +779,32 @@ function applyEvents(evts){let updated=0;const usados=new Set();
   return updated;}
 async function updateResults(){
   const btn=document.getElementById('btnUpd');btn.disabled=true;btn.textContent='Buscando...';const note=document.getElementById('updNote');
+  /* Supabase wc-sync y TheSportsDB (eventos recientes) se llaman en paralelo.
+     wc-sync trae el historial completo; eventspastleague cubre los del mismo día
+     que todavía no entraron al cron de Supabase (corre a las 09:07 UTC). */
+  const [sbRes,pastRes]=await Promise.allSettled([
+    fetch(SB_URL+'/functions/v1/wc-sync',{headers:SB_HDR}).then(r=>r.json()).catch(()=>null),
+    fetch(API_URLS[1]).then(r=>r.json()).catch(()=>null)]);
   let evts=null;
-  try{const r=await fetch(SB_URL+'/functions/v1/wc-sync',{headers:SB_HDR});const j=await r.json();
-    if(j&&Array.isArray(j.results))evts=j.results.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));}catch(e){}
-  if(!evts){
-    try{const r=await fetch(SB_URL+'/rest/v1/wc_results?select=home,away,home_score,away_score,kickoff',{headers:SB_HDR});const j=await r.json();
-      if(Array.isArray(j))evts=j.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));}catch(e){}
-    /* La tabla wc_results solo tiene lo que el cron sincronizó (09:07 UTC, antes de los partidos del día).
-       TheSportsDB directo cubre los resultados del mismo día que todavía no entraron al cron. Se combinan. */
-    let err=0;const tmp=[];
-    for(const u of API_URLS){try{const res=await fetch(u);const j=await res.json();((j&&j.events)||[]).forEach(e=>{
+  const sbJ=sbRes.status==='fulfilled'?sbRes.value:null;
+  if(sbJ&&Array.isArray(sbJ.results))evts=sbJ.results.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));
+  if(!evts)try{const r=await fetch(SB_URL+'/rest/v1/wc_results?select=home,away,home_score,away_score,kickoff',{headers:SB_HDR});const j=await r.json();
+    if(Array.isArray(j))evts=j.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));}catch(e){}
+  const pastJ=pastRes.status==='fulfilled'?pastRes.value:null;
+  const pastEvts=((pastJ&&pastJ.events)||[]).reduce((a,e)=>{
+    if(!DONE_STATUS[e.strStatus]||e.intHomeScore==null||e.intAwayScore==null||e.intHomeScore===''||e.intAwayScore==='')return a;
+    const hs=+e.intHomeScore,as=+e.intAwayScore;if(!isNaN(hs)&&!isNaN(as))a.push({home:e.strHomeTeam,away:e.strAwayTeam,hs,as,time:eventTime(e)});
+    return a;},[]);
+  if(pastEvts.length){
+    if(!evts){evts=pastEvts;}
+    else{const seen=new Set(evts.map(e=>norm(e.home)+'|'+norm(e.away)));pastEvts.forEach(t=>{if(!seen.has(norm(t.home)+'|'+norm(t.away)))evts.push(t);});}}
+  if(!evts){let err=0;const tmp=[];
+    try{const res=await fetch(API_URLS[0]);const j=await res.json();((j&&j.events)||[]).forEach(e=>{
       if(!DONE_STATUS[e.strStatus]||e.intHomeScore==null||e.intAwayScore==null||e.intHomeScore===''||e.intAwayScore==='')return;
       const hs=+e.intHomeScore,as=+e.intAwayScore;if(isNaN(hs)||isNaN(as))return;
-      tmp.push({home:e.strHomeTeam,away:e.strAwayTeam,hs,as,time:eventTime(e)});});}catch(ex){err++;}}
-    if(err<API_URLS.length){
-      if(!evts)evts=tmp;
-      else{const seen=new Set(evts.map(e=>norm(e.home)+'|'+norm(e.away)));
-           tmp.forEach(t=>{if(!seen.has(norm(t.home)+'|'+norm(t.away)))evts.push(t);});}}
-  }
+      tmp.push({home:e.strHomeTeam,away:e.strAwayTeam,hs,as,time:eventTime(e)});});}catch(ex){err++;}
+    if(!err)evts=tmp;}
+
   btn.disabled=false;btn.innerHTML='&#8635; Actualizar';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
   const updated=applyEvents(evts);persist();rerender();
