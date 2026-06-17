@@ -452,6 +452,7 @@ function status(iso){const k=new Date(iso).getTime(),now=Date.now();if(now<k)ret
 /* ---------- standings ---------- */
 function blankRow(t){return{team:t,P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0};}
 function hasResult(id){const r=STATE.results[id];if(!r||r.h===''||r.a===''||r.h==null||r.a==null||isNaN(+r.h)||isNaN(+r.a))return false;if(viewMode==='real'&&r.sim)return false;return true;}
+function hasRealResult(id){const r=STATE.results[id];return !!(r&&r.h!==''&&r.a!==''&&r.h!=null&&r.a!=null&&!isNaN(+r.h)&&!isNaN(+r.a)&&!r.sim);}
 function computeGroup(g){const rows={};DATA.groups[g].forEach(t=>rows[t]=blankRow(t));
   DATA.groupMatches.filter(m=>m.group===g).forEach(m=>{if(!hasResult(m.id))return;const h=+STATE.results[m.id].h,a=+STATE.results[m.id].a;const rh=rows[m.home],ra=rows[m.away];if(!rh||!ra)return;
     rh.P++;ra.P++;rh.GF+=h;rh.GA+=a;ra.GF+=a;ra.GA+=h;if(h>a){rh.W++;ra.L++;rh.Pts+=3;}else if(h<a){ra.W++;rh.L++;ra.Pts+=3;}else{rh.D++;ra.D++;rh.Pts++;ra.Pts++;}});
@@ -723,21 +724,24 @@ document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySele
 let toT;function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');clearTimeout(toT);toT=setTimeout(()=>t.classList.remove('show'),2600);}
 
 /* ---------- simulation ---------- */
-function simGroups(){DATA.groupMatches.forEach(m=>{const r=simMatch(m.home,m.away,false);STATE.results[m.id]={h:r.h,a:r.a,sim:true};});persist();}
+function simGroups(){DATA.groupMatches.forEach(m=>{if(hasRealResult(m.id))return;const r=simMatch(m.home,m.away,false);STATE.results[m.id]={h:r.h,a:r.a,sim:true};});persist();}
 function teamGroup(t){return Object.keys(DATA.groups).find(g=>DATA.groups[g].includes(t));}
-function forceGroupWin(team){const g=teamGroup(team);if(!g)return;DATA.groupMatches.filter(m=>m.group===g&&(m.home===team||m.away===team)).forEach(m=>{STATE.results[m.id]=(m.home===team)?{h:2,a:0,sim:true}:{h:0,a:2,sim:true};delete STATE.pens[m.id];});}
-function simKnockouts(forced){recompute();
+function forceGroupWin(team){const g=teamGroup(team);if(!g)return;DATA.groupMatches.filter(m=>m.group===g&&(m.home===team||m.away===team)).forEach(m=>{if(hasRealResult(m.id))return;STATE.results[m.id]=(m.home===team)?{h:2,a:0,sim:true}:{h:0,a:2,sim:true};delete STATE.pens[m.id];});}
+function simKnockouts(forced){const prevMode=viewMode;viewMode='all';
+  recompute();
   if(!Object.keys(_G).every(g=>_G[g].complete)){simGroups();}
   if(forced)forceGroupWin(forced);
   recompute();
   ['R32','R16','QF','SF','3P','F'].forEach(rnd=>{
     DATA.koMatches.filter(m=>m.round===rnd).forEach(m=>{const h=resolveKoTeam(m,'home').team,a=resolveKoTeam(m,'away').team;if(!h||!a)return;
+      if(hasRealResult(m.id))return; // conservar resultado real
       if(forced&&rnd!=='3P'&&(h===forced||a===forced)){STATE.results[m.id]=(h===forced)?{h:2,a:0,sim:true}:{h:0,a:2,sim:true};delete STATE.adv[m.id];delete STATE.pens[m.id];return;}
       const r=simMatch(h,a,true);STATE.results[m.id]={h:r.h,a:r.a,sim:true};
       if(r.h===r.a){const s=getSim();const homeWins=s.det?(r.pH>=r.pA):(Math.random()<r.pH/(r.pH+r.pA));const pp=genPens();
         STATE.adv[m.id]=homeWins?'home':'away';STATE.pens[m.id]=homeWins?{h:pp.winner,a:pp.loser}:{h:pp.loser,a:pp.winner};}
       else{delete STATE.adv[m.id];delete STATE.pens[m.id];}});
     recompute();});
+  viewMode=prevMode;
   persist();}
 document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
 document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Fase Final simulada &#129529;');};
