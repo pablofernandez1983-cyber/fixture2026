@@ -188,8 +188,9 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .hist-btns button.on{background:var(--gold);color:#06121f;border-color:var(--gold)}
 .sc input.api{border-color:var(--blue);color:var(--blue)}
 .btn-theme{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:17px;cursor:pointer;line-height:1}
-.btn-mode{font-family:'Barlow Condensed';font-weight:700;font-size:13px;border:1px solid var(--gold);background:rgba(255,184,0,.12);color:var(--gold);border-radius:20px;padding:5px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.btn-mode.real{background:var(--surface2);color:var(--muted);border-color:var(--border)}
+.btn-mode{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:14px;border:1px solid rgba(255,184,0,.5);background:rgba(255,184,0,.1);color:var(--gold);border-radius:10px;padding:9px 10px;cursor:pointer;white-space:nowrap;line-height:1}
+.btn-mode.real{background:transparent;color:var(--muted);border-color:var(--border)}
+.btn-mode:active{transform:scale(.96)}
 /* Tema claro */
 body.light{--bg:#F0F4F8;--surface:#FFFFFF;--surface2:#E4EBF2;--gold:#C48800;--gold2:#A07000;--red:#C81020;--green:#00883A;--blue:#0078A0;--text:#0A1929;--muted:#3A6080;--border:#B8CАДА;}
 body.light{--border:#B8CADA}
@@ -211,6 +212,7 @@ body.light .bs{color:var(--text)}
     <div class="upd">
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn-theme" id="btnTheme" title="Cambiar tema">&#9728;&#65039;</button>
+        <button id="btnMode" class="btn-mode" title="Solo reales: tablas con resultados reales&#10;+SIM: incluye la simulación">+SIM</button>
         <button class="btn-upd" id="btnUpd">&#8635; Actualizar</button>
       </div>
       <div class="updnote" id="updNote"></div>
@@ -222,9 +224,6 @@ body.light .bs{color:var(--text)}
       <div class="tab" data-v="grupos">Grupos</div>
       <div class="tab" data-v="llaves">Fase Final</div>
       <div class="tab" data-v="arg">Argentina</div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;padding:4px 2px 2px">
-      <button id="btnMode" class="btn-mode">&#128302; Con pron&oacute;stico</button>
     </div>
   </div>
 </div>
@@ -743,8 +742,8 @@ function simKnockouts(forced){const prevMode=viewMode;viewMode='all';
     recompute();});
   viewMode=prevMode;
   persist();}
-document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
-document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Fase Final simulada &#129529;');};
+document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;setMode('all');simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
+document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;setMode('all');simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Fase Final simulada &#129529;');};
 document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los resultados (grupos y Fase Final)?')){STATE.results={};STATE.adv={};STATE.pens={};persist();rerender();toast('Todo borrado');}};
 document.getElementById('resetKoBtn').onclick=()=>{if(confirm('¿Borrar solo los resultados de Fase Final?')){DATA.koMatches.forEach(m=>{delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});persist();rerender();toast('Fase Final borrada');}};
 
@@ -831,10 +830,12 @@ document.getElementById('btnUpd').onclick=updateResults;
     btn.textContent=isLight?'🌙':'☀️';};})();
 
 /* ---------- toggle real / pronóstico ---------- */
+function setMode(m){viewMode=m;const btn=document.getElementById('btnMode');if(!btn)return;
+  if(m==='real'){btn.textContent='Solo reales';btn.classList.add('real');}
+  else{btn.textContent='+SIM';btn.classList.remove('real');}}
 (function(){const btn=document.getElementById('btnMode');if(!btn)return;
-  function syncBtn(){if(viewMode==='real'){btn.textContent='✅ Solo reales';btn.classList.add('real');}else{btn.innerHTML='&#128302; Con pron&oacute;stico';btn.classList.remove('real');}}
-  btn.onclick=()=>{viewMode=viewMode==='all'?'real':'all';syncBtn();rerender();toast(viewMode==='real'?'Mostrando solo resultados reales':'Mostrando resultados + pron&oacute;stico');};
-  syncBtn();})();
+  btn.onclick=()=>{setMode(viewMode==='all'?'real':'all');rerender();toast(viewMode==='real'?'Solo resultados reales':'Resultados + simulaci&oacute;n incluida');};
+  setMode(viewMode);})();
 
 /* ---------- boot ---------- */
 renderChips();rerender();
