@@ -200,6 +200,25 @@ body.light .pts{color:var(--text)}
 body.light .rkrow .rkp{color:var(--text)}
 body.light .minfo{color:var(--text)}
 body.light .bs{color:var(--text)}
+/* ---------- cuotas ---------- */
+.m-odds{margin-top:5px;display:flex;gap:4px;align-items:center;font-family:'Barlow Condensed';font-size:13px;flex-wrap:wrap}
+.m-odds .ov{color:var(--gold);font-family:'Bebas Neue';font-size:16px;line-height:1}
+.m-odds .on{color:var(--muted);font-size:12px}
+.m-odds .ox{color:var(--muted);font-size:12px}
+.m-odds .oe{color:var(--muted);font-size:10px;opacity:.5;margin-left:1px}
+/* ---------- estadísticas ---------- */
+.stat-s{background:var(--surface);border-radius:12px;padding:14px 12px;margin-bottom:12px}
+.stat-h{font-family:'Barlow Condensed';font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
+.stb{width:100%;border-collapse:collapse;font-family:'Barlow Condensed';font-size:15px}
+.stb th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;text-align:right;padding:3px 8px;font-weight:400}
+.stb th.l{text-align:left}
+.stb td{padding:5px 8px;text-align:right;border-top:1px solid rgba(26,58,92,.4)}
+.stb td.l{text-align:left;font-size:16px;font-weight:600}
+.stb td.g{color:var(--muted);font-size:12px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sc2{background:var(--surface2);border-radius:8px;padding:10px 12px}
+.sv{font-family:'Bebas Neue';font-size:30px;color:var(--gold);line-height:1}
+.sl{font-family:'Barlow Condensed';font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
 </style>
 </head>
 <body>
@@ -224,6 +243,7 @@ body.light .bs{color:var(--text)}
       <div class="tab" data-v="grupos">Grupos</div>
       <div class="tab" data-v="llaves">Fase Final</div>
       <div class="tab" data-v="arg">Argentina</div>
+      <div class="tab" data-v="stats">Estadísticas</div>
     </div>
   </div>
 </div>
@@ -262,6 +282,7 @@ body.light .bs{color:var(--text)}
   </div>
 
   <div id="view-arg" class="hidden"></div>
+  <div id="view-stats" class="hidden"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -390,7 +411,9 @@ function openMatch(no){
    `<div class="minfo"><div><span class="lbl">Partido</span> N&deg; ${m.no}</div>`+
    `<div><span class="lbl">D&iacute;a</span> ${fecha}</div>`+
    `<div><span class="lbl">Horario (Arg.)</span> ${fmtT.format(dt)} hs</div>`+
-   `<div><span class="lbl">Sede</span> ${m.venue}</div></div></div>`;
+   `<div><span class="lbl">Sede</span> ${m.venue}</div>`+
+   (!r&&hi.team&&ai.team?`<div style="margin-top:10px"><span class="lbl">Cuotas ~est.</span><br>${koOddsHtml(hi.team,ai.team,false)}</div>`:'')+
+   `</div></div>`;
   document.getElementById('modalBg').classList.add('show');
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('show');}
@@ -530,7 +553,7 @@ function renderGroups(){
       rowsHtml+=`<tr class="teamrow ${r.team===ARG?'arg':''}"><td class="l"><span class="pos ${cls}">${r.pos}</span>${r.team}</td><td>${r.P}</td><td>${r.W}</td><td>${r.D}</td><td>${r.L}</td><td>${r.GD>0?'+':''}${r.GD}</td><td class="pts">${r.Pts}</td></tr>`;});
     card.appendChild(el(`<table class="stand"><thead><tr><th class="l">Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>DG</th><th>Pts</th></tr></thead><tbody>${rowsHtml}</tbody></table>`));
     const mwrap=document.createElement('div');
-    DATA.groupMatches.filter(m=>m.group===g).forEach(m=>{mwrap.appendChild(matchRow(m));mwrap.appendChild(el(`<div class="m-venue">${m.venue}</div>`));});
+    DATA.groupMatches.filter(m=>m.group===g).forEach(m=>{mwrap.appendChild(matchRow(m));mwrap.appendChild(el(`<div class="m-venue">${m.venue}${oddsHtml(m.home,m.away,m.id)}</div>`));});
     card.appendChild(mwrap);cont.appendChild(card);});
 }
 
@@ -642,9 +665,9 @@ function renderHoy(){
       card.appendChild(el(`<div class="note">No hay partidos este d&iacute;a.</div>`));
     }
   }else{
-    gm.forEach(m=>{card.appendChild(matchRow(m));card.appendChild(el(`<div class="m-venue">Grupo ${m.group} &middot; ${m.venue}</div>`));});
+    gm.forEach(m=>{card.appendChild(matchRow(m));card.appendChild(el(`<div class="m-venue">Grupo ${m.group} &middot; ${m.venue}${oddsHtml(m.home,m.away,m.id)}</div>`));});
     km.forEach(m=>{const w=whenHtml(m.kickoff),st=status(m.kickoff);const hi=resolveKoTeam(m,'home'),ai=resolveKoTeam(m,'away');const r=koResult(m.no);
-      const row=el(`<div class="arow" style="cursor:pointer"><div class="ar-r">${m.no===104?'Final':roundShort(m.round)}</div><div class="ar-o">${hi.team||hi.label} ${r?`<span class="res">${r.h}-${r.a}</span>`:'vs'} ${ai.team||ai.label}<br><span style="color:var(--muted);font-size:12px">&#128205; ${m.venue}</span></div><div class="ar-w">${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d+'<br>'+w.t}</div></div>`);
+      const row=el(`<div class="arow" style="cursor:pointer"><div class="ar-r">${m.no===104?'Final':roundShort(m.round)}</div><div class="ar-o">${hi.team||hi.label} ${r?`<span class="res">${r.h}-${r.a}</span>`:'vs'} ${ai.team||ai.label}<br><span style="color:var(--muted);font-size:12px">&#128205; ${m.venue}</span>${koOddsHtml(hi.team,ai.team,!!r)}</div><div class="ar-w">${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d+'<br>'+w.t}</div></div>`);
       row.onclick=()=>openMatch(m.no);card.appendChild(row);});
     if(hoyOffset===0)card.appendChild(el(`<div class="note">Horarios en hora argentina. Toc&aacute; <b>&#8635; Actualizar</b> (arriba) para traer los resultados, o cargalos a mano.</div>`));
   }
@@ -703,7 +726,73 @@ function updateChampion(){const champ=koWinnerLoser(104).w;const cb=document.get
   if(champ){cb.classList.remove('hidden');cb.innerHTML=`<div class="lbl">Campe&oacute;n del Mundo 2026</div><div class="name">${champ===ARG?'&#127462;&#127479; ':''}${champ} &#127942;</div><div class="sub">Final &middot; MetLife Stadium &middot; 19 jul</div>`;}
   else cb.classList.add('hidden');}
 
-function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();updateChampion();}
+function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();renderStats();updateChampion();}
+/* ---------- estadísticas ---------- */
+let _stats=null;
+function renderStats(){
+  const cont=document.getElementById('view-stats');if(!cont)return;
+  // Estadísticas computadas desde STATE.results
+  const ts={};const ti=t=>{if(!ts[t])ts[t]={gf:0,gc:0,w:0,d:0,l:0,pj:0};};
+  let totalG=0,totalM=0,cs=0,locW=0,emp=0,visW=0,maxG=-1,maxMStr='';
+  DATA.groupMatches.forEach(m=>{
+    const r=STATE.results[m.id];if(!r||r.h===''||r.a===''||r.h==null||r.a==null)return;
+    const hg=+r.h,ag=+r.a;if(isNaN(hg)||isNaN(ag))return;
+    ti(m.home);ti(m.away);
+    ts[m.home].gf+=hg;ts[m.home].gc+=ag;ts[m.home].pj++;
+    ts[m.away].gf+=ag;ts[m.away].gc+=hg;ts[m.away].pj++;
+    if(hg>ag){ts[m.home].w++;ts[m.away].l++;}else if(hg<ag){ts[m.away].w++;ts[m.home].l++;}else{ts[m.home].d++;ts[m.away].d++;}
+    totalG+=hg+ag;totalM++;
+    if(hg===0)cs++;if(ag===0)cs++;
+    if(hg>ag)locW++;else if(hg===ag)emp++;else visW++;
+    if(hg+ag>maxG){maxG=hg+ag;maxMStr=`${m.home} ${hg}-${ag} ${m.away}`;}});
+  const teams=Object.entries(ts).filter(([,v])=>v.pj>0).sort((a,b)=>b[1].gf-a[1].gf||(b[1].gf-b[1].gc)-(a[1].gf-a[1].gc)||b[1].w-a[1].w);
+  let h='<div class="wrap">';
+  if(totalM>0){
+    const avg=(totalG/totalM).toFixed(1);
+    h+=`<div class="sg"><div class="sc2"><div class="sv">${totalG}</div><div class="sl">Goles totales</div></div>`+
+       `<div class="sc2"><div class="sv">${avg}</div><div class="sl">Goles por partido</div></div>`+
+       `<div class="sc2"><div class="sv">${totalM}</div><div class="sl">Partidos jugados</div></div>`+
+       `<div class="sc2"><div class="sv">${cs}</div><div class="sl">Porterías invictas</div></div></div>`;
+    h+=`<div class="stat-s"><div class="stat-h">Resultados fase de grupos</div>`+
+       `<div style="display:flex;gap:14px;font-family:'Barlow Condensed';font-size:15px;flex-wrap:wrap">`+
+       `<span>&#127968; Local: <b style="color:var(--gold)">${locW}</b></span>`+
+       `<span>&#x1f7F0; Empate: <b>${emp}</b></span>`+
+       `<span>&#128499; Visitante: <b>${visW}</b></span></div>`+
+       (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">Más goles: ${maxMStr} (${maxG})</div>`:'')+
+       '</div>';}
+  if(teams.length>0){
+    h+=`<div class="stat-s"><div class="stat-h">Goles por equipo — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
+    teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
+      h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
+    h+='</tbody></table></div>';}
+  // Goleadores y asistencias (ESPN)
+  h+=`<div class="stat-s"><div class="stat-h">Goleadores individuales</div>`;
+  if(_stats){
+    const L=_stats.leaders||[];
+    const gL=L.find(l=>/^goals$/i.test(l.name)||l.displayName==='Goals');
+    const aL=L.find(l=>/^assists$/i.test(l.name)||l.displayName==='Assists');
+    const yL=L.find(l=>/yellowCard/i.test(l.name));
+    const mkTable=(rows,icon)=>{
+      if(!rows||!rows.length)return '<div style="color:var(--muted);font-family:\'Barlow Condensed\';font-size:14px">Sin datos disponibles.</div>';
+      let t='<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l g">País</th><th>'+icon+'</th></tr></thead><tbody>';
+      rows.slice(0,10).forEach((p,i)=>{
+        const nm=p.athlete&&p.athlete.displayName||p.displayName||'—';
+        const tm=p.athlete&&p.athlete.team&&(p.athlete.team.displayName||p.athlete.team.abbreviation)||'';
+        t+=`<tr><td class="l g">${i+1}</td><td class="l">${nm}</td><td class="l g">${tm}</td><td style="color:var(--gold);font-weight:700">${p.value||p.displayValue||0}</td></tr>`;});
+      return t+'</tbody></table>';};
+    h+=mkTable(gL&&gL.leaders,'⚽');
+    if(aL&&aL.leaders&&aL.leaders.length){h+=`<div class="stat-h" style="margin-top:14px">Asistencias</div>`+mkTable(aL.leaders,'🎯');}
+    if(yL&&yL.leaders&&yL.leaders.length){h+=`<div class="stat-h" style="margin-top:14px">Tarjetas amarillas</div>`+mkTable(yL.leaders,'🟨');}
+  }else{
+    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:8px 0">Tocá el botón para ver goleadores y asistencias en tiempo real desde ESPN.</div>`;}
+  h+=`<button onclick="loadStats()" style="margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estadísticas de jugadores</button>`;
+  h+='</div></div>';
+  cont.innerHTML=h;}
+async function loadStats(){
+  try{toast('Cargando estadísticas...');
+    const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders?limit=20');
+    const j=await r.json();_stats=j;renderStats();toast('✅ Estadísticas actualizadas');}
+  catch(e){toast('⚠️ No se pudieron cargar estadísticas de ESPN');}}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
@@ -713,7 +802,7 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
     ch.onclick=()=>{CUR_GROUP=g;renderChips();renderGroups();};c.appendChild(ch);});}
 
 /* ---------- tabs ---------- */
-const VIEWS=['hoy','grupos','llaves','arg'];
+const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
@@ -745,6 +834,25 @@ document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||nul
 document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los resultados (grupos y Fase Final)?')){STATE.results={};STATE.adv={};STATE.pens={};persist();rerender();toast('Todo borrado');}};
 document.getElementById('resetKoBtn').onclick=()=>{if(confirm('¿Borrar solo los resultados de Fase Final?')){DATA.koMatches.forEach(m=>{delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});persist();rerender();toast('Fase Final borrada');}};
 
+/* ---------- cuotas estimadas (modelo POW, no de casa de apuestas real) ---------- */
+const ABBR={'México':'MEX','Sudáfrica':'RSA','Corea del Sur':'KOR','Chequia':'CZE','Canadá':'CAN','Bosnia y Herzegovina':'BIH','Catar':'QAT','Suiza':'SUI','Brasil':'BRA','Marruecos':'MAR','Haití':'HAI','Escocia':'SCO','Estados Unidos':'USA','Paraguay':'PAR','Australia':'AUS','Turquía':'TUR','Alemania':'ALE','Curazao':'CUW','Costa de Marfil':'CIV','Ecuador':'ECU','Países Bajos':'NED','Japón':'JPN','Suecia':'SUE','Túnez':'TUN','Bélgica':'BEL','Egipto':'EGI','Irán':'IRN','Nueva Zelanda':'NZL','España':'ESP','Cabo Verde':'CPV','Arabia Saudita':'KSA','Uruguay':'URU','Francia':'FRA','Senegal':'SEN','Irak':'IRQ','Noruega':'NOR','Argentina':'ARG','Argelia':'ALG','Austria':'AUT','Jordania':'JOR','Portugal':'POR','RD Congo':'COD','Uzbekistán':'UZB','Colombia':'COL','Inglaterra':'ING','Croacia':'CRO','Ghana':'GHA','Panamá':'PAN'};
+function teamAbbr(t){return ABBR[t]||t.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().slice(0,3);}
+/* 3-way (grupos) o 2-way (KO). Calibrado: diff=16 → ~1.42/4.6/7.0; diff=0 → 2.56/3.55/2.56 */
+function computeOdds(home,away,isKO){
+  const ph=POW(home)||70,pa=POW(away)||70,diff=ph-pa;
+  const eH=Math.exp(0.05*diff),eA=1/eH,s=eH+eA;
+  if(isKO){const pH=eH/s;return {h:+(0.94/pH).toFixed(2),a:+(0.94/(1-pH)).toFixed(2)};}
+  const pD=0.265*Math.exp(-0.001*diff*diff);
+  const pWH=eH/s*(1-pD),pWA=eA/s*(1-pD);
+  return {h:+(0.94/pWH).toFixed(2),d:+(0.94/pD).toFixed(2),a:+(0.94/pWA).toFixed(2)};}
+function oddsHtml(home,away,mid){
+  if(hasResult(mid))return '';
+  const o=computeOdds(home,away);if(!o)return '';
+  return `<div class="m-odds"><span class="on">${teamAbbr(home)}</span><span class="ov">${o.h}</span><span class="ox">X&nbsp;${o.d}</span><span class="on">${teamAbbr(away)}</span><span class="ov">${o.a}</span><span class="oe">~est.</span></div>`;}
+function koOddsHtml(home,away,hasR){
+  if(hasR||!home||!away)return '';
+  const o=computeOdds(home,away,true);if(!o)return '';
+  return `<div class="m-odds" style="margin-top:3px"><span class="on">${teamAbbr(home)}</span><span class="ov">${o.h}</span><span class="ox">·</span><span class="on">${teamAbbr(away)}</span><span class="ov">${o.a}</span><span class="oe">~est.</span></div>`;}
 /* ---------- live update (best-effort, TheSportsDB free) ---------- */
 const ALIAS={'mexico':'México','south africa':'Sudáfrica','south korea':'Corea del Sur','korea republic':'Corea del Sur','czechia':'Chequia','czech republic':'Chequia','canada':'Canadá','bosnia and herzegovina':'Bosnia y Herzegovina','bosnia herzegovina':'Bosnia y Herzegovina','bosnia':'Bosnia y Herzegovina','qatar':'Catar','switzerland':'Suiza','brazil':'Brasil','morocco':'Marruecos','haiti':'Haití','haïti':'Haití','scotland':'Escocia','united states':'Estados Unidos','usa':'Estados Unidos','paraguay':'Paraguay','australia':'Australia','turkey':'Turquía','turkiye':'Turquía','türkiye':'Turquía','germany':'Alemania','curacao':'Curazao','curaçao':'Curazao','ivory coast':'Costa de Marfil',"côte d'ivoire":'Costa de Marfil','ecuador':'Ecuador','netherlands':'Países Bajos','holland':'Países Bajos','japan':'Japón','sweden':'Suecia','tunisia':'Túnez','belgium':'Bélgica','egypt':'Egipto','iran':'Irán','new zealand':'Nueva Zelanda','spain':'España','cape verde':'Cabo Verde','cabo verde':'Cabo Verde','saudi arabia':'Arabia Saudita','uruguay':'Uruguay','france':'Francia','senegal':'Senegal','iraq':'Irak','norway':'Noruega','argentina':'Argentina','algeria':'Argelia','austria':'Austria','jordan':'Jordania','portugal':'Portugal','dr congo':'RD Congo','democratic republic of congo':'RD Congo','congo dr':'RD Congo','uzbekistan':'Uzbekistán','colombia':'Colombia','england':'Inglaterra','croatia':'Croacia','ghana':'Ghana','panama':'Panamá'};
 function norm(s){const v=s||'';return (v.normalize?v.normalize('NFC'):v).toLowerCase().replace(/\./g,'').replace(/-/g,' ').trim();}
