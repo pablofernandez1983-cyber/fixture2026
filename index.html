@@ -733,10 +733,45 @@ function updateChampion(){const champ=koWinnerLoser(104).w;const cb=document.get
 
 function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();renderStats();updateChampion();}
 /* ---------- estadísticas (solo datos reales, sin pronóstico) ---------- */
-let _stats=null;
+let _stats=null,_scorers=null,_winProbs=null;
+
+/* Simulación KO sin tocar STATE — para Monte Carlo de probabilidades */
+function simKODry(){
+  const T={};
+  function resT(slot,mno){
+    if(slot.t==='W'){const g=_G[slot.g];return g&&g.rows[0]?g.rows[0].team:null;}
+    if(slot.t==='R'){const g=_G[slot.g];return g&&g.rows[1]?g.rows[1].team:null;}
+    if(slot.t==='T'){if(_T&&_T.assign[mno]){const g=_G[_T.assign[mno]];return g&&g.rows[2]?g.rows[2].team:null;}return null;}
+    if(slot.t==='M')return T[slot.m]?T[slot.m].w:null;
+    if(slot.t==='ML')return T[slot.m]?T[slot.m].l:null;
+    return null;}
+  ['R32','R16','QF','SF','3P','F'].forEach(rnd=>{
+    DATA.koMatches.filter(m=>m.round===rnd).forEach(m=>{
+      const home=resT(m.home,m.no),away=resT(m.away,m.no);
+      if(!home||!away){T[m.no]={w:null,l:null};return;}
+      if(rnd==='3P'){T[m.no]={w:home,l:away};return;}
+      if(hasRealResult(m.id)){
+        const r=STATE.results[m.id],rh=+r.h,ra=+r.a;
+        if(rh>ra)T[m.no]={w:home,l:away};
+        else if(ra>rh)T[m.no]={w:away,l:home};
+        else{const ph=penOf(m.no,'home'),pa=penOf(m.no,'away');
+          if(ph!=null&&pa!=null&&ph!==pa)T[m.no]=ph>pa?{w:home,l:away}:{w:away,l:home};
+          else{const adv=STATE.adv[m.id];T[m.no]=adv==='home'?{w:home,l:away}:adv==='away'?{w:away,l:home}:{w:null,l:null};}}
+        return;}
+      const r=simMatch(home,away,true),s=getSim();
+      if(r.h>r.a)T[m.no]={w:home,l:away};
+      else if(r.a>r.h)T[m.no]={w:away,l:home};
+      else{const hw=s.det?(r.pH>=r.pA):(Math.random()<r.pH/(r.pH+r.pA));T[m.no]=hw?{w:home,l:away}:{w:away,l:home};}});});
+  return T[104]?T[104].w:null;}
+
+function computeWinProbs(N){
+  N=N||250;if(!_G||!_T)recompute();
+  const counts={};
+  for(let i=0;i<N;i++){const c=simKODry();if(c)counts[c]=(counts[c]||0)+1;}
+  return Object.entries(counts).map(([t,c])=>({team:t,prob:c/N,odds:+(0.94/(c/N)).toFixed(2)})).sort((a,b)=>b.prob-a.prob);}
+
 function renderStats(){
   const cont=document.getElementById('view-stats');if(!cont)return;
-  /* Solo resultados reales (hasRealResult descarta simulaciones) */
   const ts={};const ti=t=>{if(!ts[t])ts[t]={gf:0,gc:0,w:0,d:0,l:0,pj:0};};
   let totalG=0,totalM=0,cs=0,locW=0,emp=0,visW=0,maxG=-1,maxMStr='';
   DATA.groupMatches.forEach(m=>{
@@ -770,13 +805,29 @@ function renderStats(){
     teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
       h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
     h+='</tbody></table></div>';}
-  /* Goleadores y asistencias individuales (ESPN) */
+  /* Probabilidades de campeón (Monte Carlo) */
+  h+=`<div class="stat-s"><div class="stat-h">Probabilidades de campe&oacute;n — simulaci&oacute;n</div>`;
+  if(_winProbs&&_winProbs.length){
+    h+=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Selecci&oacute;n</th><th style="text-align:right">%</th><th style="text-align:right">Cuota</th></tr></thead><tbody>`;
+    _winProbs.slice(0,10).forEach((x,i)=>{
+      const pct=Math.round(x.prob*100);
+      const bar=`<span style="display:inline-block;height:5px;border-radius:2px;background:var(--gold);opacity:.55;width:${Math.max(3,Math.round(pct*2.5))}px;vertical-align:middle;margin-right:4px"></span>`;
+      h+=`<tr><td class="l g">${i+1}</td><td class="l ${x.team===ARG?'arg':''}">${x.team}</td><td style="text-align:right;white-space:nowrap">${bar}<b style="font-family:'Bebas Neue';font-size:14px">${pct}%</b></td><td style="text-align:right;color:var(--gold);font-family:'Bebas Neue';font-size:15px">${x.odds}x</td></tr>`;});
+    h+='</tbody></table>';
+    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:11px;margin-top:6px">250 simulaciones · basado en fuerza actual (ranking FIFA + odds + historial) &mdash; no oficial</div>`;}
+  else{h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0 8px">Tocá el bot&oacute;n para calcular las probabilidades de cada equipo de ganar el Mundial.</div>`;}
+  h+=`</div>`;
+  /* Goleadores individuales */
   h+=`<div class="stat-s"><div class="stat-h">Goleadores individuales</div>`;
-  if(_stats&&!_stats._failed){
+  if(_scorers&&_scorers.length){
+    h+=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l g">Pa&iacute;s</th><th>&#9917;</th></tr></thead><tbody>`;
+    _scorers.slice(0,15).forEach((p,i)=>{
+      h+=`<tr><td class="l g">${i+1}</td><td class="l">${p.name}</td><td class="l g">${p.team}</td><td style="color:var(--gold);font-weight:700">${p.goals}</td></tr>`;});
+    h+='</tbody></table>';}
+  else if(_stats&&!_stats._failed){
     const L=_stats.leaders||_stats.statistics||[];
     const gL=L.find(l=>/^goals?$/i.test(l.name)||/^Goals?$/.test(l.displayName));
     const aL=L.find(l=>/^assists?$/i.test(l.name)||/^Assists?$/.test(l.displayName));
-    const yL=L.find(l=>/yellowCard/i.test(l.name));
     const mkTable=(rows,icon)=>{
       if(!rows||!rows.length)return `<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px">Sin datos en esta categor&iacute;a.</div>`;
       let t=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l g">Pa&iacute;s</th><th>${icon}</th></tr></thead><tbody>`;
@@ -785,34 +836,73 @@ function renderStats(){
         const tm=(p.athlete&&p.athlete.team&&(p.athlete.team.displayName||p.athlete.team.abbreviation))||'';
         t+=`<tr><td class="l g">${i+1}</td><td class="l">${nm}</td><td class="l g">${tm}</td><td style="color:var(--gold);font-weight:700">${p.value||p.displayValue||0}</td></tr>`;});
       return t+'</tbody></table>';};
-    const goalsRows=gL&&gL.leaders;
-    h+=mkTable(goalsRows,'⚽');
-    if(aL&&aL.leaders&&aL.leaders.length){h+=`<div class="stat-h" style="margin-top:14px">Asistencias</div>`+mkTable(aL.leaders,'🎯');}
-    if(yL&&yL.leaders&&yL.leaders.length){h+=`<div class="stat-h" style="margin-top:14px">Tarjetas amarillas</div>`+mkTable(yL.leaders,'🟨');}
-  }else if(_stats&&_stats._failed){
-    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;line-height:1.5">No se pudo obtener estadísticas individuales desde la API de ESPN para el Mundial 2026.<br>Podés consultarlas en <b>fifa.com</b> o buscando en Google "goleadores Mundial 2026".</div>`;
-  }else{
-    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0 8px">Toc&aacute; el bot&oacute;n para cargar goleadores y asistencias en tiempo real.</div>`;}
-  h+=`<button onclick="loadStats()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estad&iacute;sticas de jugadores</button>`;
+    h+=mkTable(gL&&gL.leaders,'&#9917;');
+    if(aL&&aL.leaders&&aL.leaders.length)h+=`<div class="stat-h" style="margin-top:14px">Asistencias</div>`+mkTable(aL.leaders,'&#127919;');}
+  else{h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;line-height:1.5">`+
+    (_stats&&_stats._failed?`No se encontraron datos de goleadores en ESPN. Podés consultarlos en <b>fifa.com</b>.`:`Toc&aacute; el bot&oacute;n para cargar goleadores en tiempo real.`)+
+    `</div>`;}
+  h+=`<button onclick="loadStats()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Actualizar estad&iacute;sticas</button>`;
   h+='</div></div>';
   cont.innerHTML=h;}
+
+function parseSummaryScorers(j,players){
+  function addG(nm,tm){if(!nm)return;const k=nm.toLowerCase().replace(/\s+/g,'_');if(!players[k])players[k]={name:nm,team:tm||'',goals:0};players[k].goals++;}
+  (j.plays||[]).forEach(p=>{
+    const tt=(p.type&&p.type.text)||'';
+    if(!/goal/i.test(tt)||/own/i.test(tt))return;
+    const sc=(p.participants||[]).find(x=>/(scorer|goal)/i.test((x.type&&x.type.text)||''))||(p.participants||[])[0];
+    if(!sc)return;
+    addG((sc.athlete&&sc.athlete.displayName)||'',(p.team&&p.team.displayName)||(sc.athlete&&sc.athlete.team&&sc.athlete.team.displayName)||'');});
+  (j.scoringPlays||[]).forEach(p=>{
+    const tt=(p.type&&p.type.text)||'';
+    if(!/goal/i.test(tt)||/own/i.test(tt))return;
+    addG((p.athlete&&p.athlete.displayName)||'',(p.team&&p.team.displayName)||'');});
+  const sc=j.scoring||{};
+  (sc.periods||sc.sections||[]).forEach(sec=>{
+    (sec.items||sec.plays||[]).forEach(item=>{
+      if(/own/i.test((item.type||'')+(item.text||'')))return;
+      if(!/goal/i.test(item.type||''))return;
+      addG((item.athlete&&item.athlete.displayName)||item.displayName||'',(item.team&&item.team.displayName)||'');});});}
+
 async function loadStats(){
-  /* Intenta múltiples endpoints de ESPN en secuencia hasta encontrar datos de líderes */
-  const URLS=[
+  /* 1. Win probabilities via Monte Carlo (local, instantaneous) */
+  toast('Calculando probabilidades...');
+  _winProbs=computeWinProbs(250);
+  renderStats();
+  /* 2. Individual scorers — try ESPN leaders endpoint first (fast) */
+  toast('Buscando goleadores...');
+  const LURLS=[
     'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders?limit=20',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders',
-  ];
-  toast('Cargando estadísticas...');
-  for(const url of URLS){
-    try{
-      const r=await fetch(url);if(!r.ok)continue;
-      const j=await r.json();
-      const src=j.leaders||j.statistics;
-      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
-        _stats=j;renderStats();toast('✅ Estadísticas actualizadas');return;}
-    }catch(e){continue;}}
-  _stats={_failed:true};renderStats();toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/athletes/leaders?limit=20',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20'];
+  for(const url of LURLS){
+    try{const r=await fetch(url);if(!r.ok)continue;const j=await r.json();
+      const src=j.leaders||j.statistics||j.categories;
+      if(src&&Array.isArray(src)&&src.some(s=>s.leaders&&s.leaders.length>0)){
+        _stats=j;renderStats();toast('✅ Estadísticas actualizadas');return;}}catch(e){}}
+  /* 3. Fallback: fetch scoreboard to get event IDs, then batch-fetch summaries */
+  const now=Date.now();const ed=d=>d.toISOString().slice(0,10).replace(/-/g,'');
+  const sbUrls=Array.from({length:15},(_,i)=>ESPN_BASE+'?dates='+ed(new Date(now-i*864e5)));
+  const sbRes=await Promise.allSettled(sbUrls.map(u=>fetch(u).then(r=>r.json()).catch(()=>null)));
+  const evIds=[];
+  sbRes.forEach(r=>{if(r.status!=='fulfilled'||!r.value)return;
+    (r.value.events||[]).forEach(ev=>{
+      const comp=(ev.competitions||[])[0];if(!comp)return;
+      const st=(ev.status&&ev.status.type)||(comp&&comp.status&&comp.status.type)||{};
+      if(!st.completed&&st.state!=='post')return;
+      if(ev.id&&!evIds.includes(ev.id))evIds.push(ev.id);});});
+  if(!evIds.length){_stats={_failed:true};renderStats();toast('⚠️ Sin datos de goleadores disponibles');return;}
+  toast('Cargando resúmenes de partidos...');
+  const players={};const BS=6;
+  for(let i=0;i<Math.min(evIds.length,48);i+=BS){
+    const batch=evIds.slice(i,i+BS);
+    const res=await Promise.allSettled(batch.map(id=>
+      fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event='+id)
+        .then(r=>r.json()).catch(()=>null)));
+    res.forEach(r=>{if(r.status==='fulfilled'&&r.value)parseSummaryScorers(r.value,players);});}
+  const arr=Object.values(players).filter(p=>p.goals>0).sort((a,b)=>b.goals-a.goals);
+  if(arr.length){_scorers=arr;renderStats();toast('✅ Goleadores actualizados');}
+  else{_stats={_failed:true};renderStats();toast('⚠️ No se encontraron datos de goleadores en ESPN');}}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
