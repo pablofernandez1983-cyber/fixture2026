@@ -206,6 +206,10 @@ body.light .sc input{color:var(--text);background:var(--surface)}
 body.light .modal .mx{color:var(--muted)}
 body.light .advbtn{color:var(--muted);background:var(--surface2)}
 body.light .ko-meta span:last-child{color:var(--muted)}
+/* Partido finalizado — distinción visual */
+.match.done{border-left:3px solid rgba(0,201,78,.35);padding-left:9px}
+body.light .match.done{border-left:3px solid var(--green);background:rgba(0,136,58,.06)}
+.match:not(.done){padding-left:12px}
 /* ---------- cuotas ---------- */
 .m-odds{margin-top:5px;display:flex;gap:4px;align-items:center;font-family:'Barlow Condensed';font-size:13px;flex-wrap:wrap}
 .m-odds .ov{color:var(--gold);font-family:'Bebas Neue';font-size:16px;line-height:1}
@@ -567,8 +571,8 @@ function mkInput(m,side){const r=STATE.results[m.id]||{};const inp=document.crea
 
 /* ---------- groups ---------- */
 function matchRow(m){
-  const w=whenHtml(m.kickoff),st=status(m.kickoff),isArg=(m.home===ARG||m.away===ARG);
-  const row=el(`<div class="match ${isArg?'arg':''}"></div>`);
+  const w=whenHtml(m.kickoff),st=status(m.kickoff),isArg=(m.home===ARG||m.away===ARG),isDone=hasRealResult(m.id);
+  const row=el(`<div class="match ${isArg?'arg':''} ${isDone?'done':''}"></div>`);
   row.appendChild(el(`<div class="m-when ${st==='live'?'live':''}"><div class="d">${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d}</div>${st==='live'?'':w.t}</div>`));
   const teams=el(`<div class="m-teams"></div>`);
   const r=STATE.results[m.id];const hv=hasResult(m.id)?+r.h:null,av=hasResult(m.id)?+r.a:null;
@@ -834,15 +838,34 @@ function renderStats(){
     h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${c.team}</span><span class="rkg" style="flex:0 0 60px;text-align:right;font-family:'Bebas Neue';font-size:14px;color:var(--gold)">${c.ml}</span><span class="rkp">${prob}%</span></div>`;});
   h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Cuotas americanas (American odds) · Oddschecker/FanDuel/DraftKings. Probabilidad implícita calculada, sin descontar margen de la casa.</div></div>`;
 
-  /* ── Goleadores históricos de Mundiales ── */
-  h+=`<div class="stat-s"><div class="stat-h">Goleadores hist&oacute;ricos · todos los Mundiales (pre-2026)</div>`;
-  h+=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l">Pa&iacute;s</th><th class="l g">Edici&oacute;n(es)</th><th>&#9917;</th></tr></thead><tbody>`;
-  let rank=0,prevG=-1;
-  HIST_SCORERS.sort((a,b)=>b.goals-a.goals).forEach((p,i)=>{
-    if(p.goals!==prevG){rank=i+1;prevG=p.goals;}
+  /* ── Goleadores históricos de Mundiales (+ 2026 en vivo si ya cargó ESPN) ── */
+  const espn2026={};
+  if(_stats&&!_stats._failed){
+    const gL=(_stats.leaders||[]).find(l=>/goals/i.test(l.displayName));
+    (gL&&gL.leaders||[]).forEach(p=>{if(p.athlete&&p.athlete.displayName)espn2026[p.athlete.displayName]=+(p.value||0);});}
+  const maxPre=Math.max(...HIST_SCORERS.map(p=>p.goals));
+  const enriched=HIST_SCORERS.map(p=>{const g2026=espn2026[p.name]||0;return{...p,g2026,total:p.goals+g2026};})
+    .sort((a,b)=>b.total-a.total||b.goals-a.goals||a.name.localeCompare(b.name));
+  const has2026Data=Object.keys(espn2026).length>0;
+  const titleSuffix=has2026Data?' <span style="color:var(--green);font-size:11px;font-family:\'Barlow Condensed\';font-weight:400">· actualizado con 2026 &#9989;</span>':'';
+  h+=`<div class="stat-s"><div class="stat-h">Goleadores hist&oacute;ricos · todos los Mundiales${titleSuffix}</div>`;
+  h+=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l">Pa&iacute;s</th><th class="l g">${has2026Data?'2026':'Ediciones'}</th><th>&#9917;</th></tr></thead><tbody>`;
+  let hrank=0,hprevG=-1;
+  enriched.forEach((p,i)=>{
+    if(p.total!==hprevG){hrank=i+1;hprevG=p.total;}
     const isArg=p.country==='Argentina';
-    h+=`<tr><td class="l g">${rank}</td><td class="l ${isArg?'arg':''}" style="font-weight:600">${p.name}</td><td class="l g">${p.country}</td><td class="l g">${p.era}</td><td style="color:var(--gold);font-weight:700">${p.goals}</td></tr>`;});
-  h+=`</tbody></table><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Fuente: FIFA. No incluye los goles de 2026. Messi (13) podr&iacute;a sumar si juega este Mundial.</div></div>`;
+    const isRecord=p.total>maxPre;
+    const isTie=p.g2026>0&&p.total===maxPre;
+    let badge='';
+    if(isRecord)badge=`<span style="color:var(--red);font-size:10px;margin-left:4px">&#128293; NUEVO RÉC.</span>`;
+    else if(isTie)badge=`<span style="color:var(--gold);font-size:10px;margin-left:4px">&#127942; RÉCORD</span>`;
+    const goalsCell=has2026Data&&p.g2026>0?`+${p.g2026}`:(has2026Data?'-':p.era);
+    const rowStyle=isRecord||isTie?'background:rgba(255,184,0,.1)':'';
+    h+=`<tr style="${rowStyle}"><td class="l g">${hrank}</td><td class="l ${isArg?'arg':''}" style="font-weight:600">${p.name}${badge}</td><td class="l g">${p.country}</td><td class="l g">${goalsCell}</td><td style="color:var(--gold);font-weight:700">${p.total}</td></tr>`;});
+  const noteText=has2026Data
+    ?`Totales incluyen goles de 2026 (ESPN en vivo). Fuente hist&oacute;rica: FIFA.`
+    :`Datos pre-2026 (FIFA). Los totales se actualizan al cargar las estad&iacute;sticas de ESPN.`;
+  h+=`</tbody></table><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">${noteText}</div></div>`;
 
   h+='</div>'; /* cierra wrap */
   cont.innerHTML=h;}
@@ -874,7 +897,8 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
 /* ---------- tabs ---------- */
 const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
-  const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));});
+  const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
+  if(v==='stats'&&!_stats)loadStats();});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
