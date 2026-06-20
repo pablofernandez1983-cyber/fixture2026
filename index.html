@@ -31,6 +31,8 @@ h1,h2,h3{margin:0;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-we
 .tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin:8px auto 4px;max-width:656px}
 .tab{flex:1;text-align:center;padding:10px 6px;border-radius:9px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;color:var(--muted);cursor:pointer;transition:.15s}
 .tab.active{background:var(--surface2);color:var(--gold)}
+.tabs-r2{margin-top:3px;padding:3px 4px;margin-bottom:0}
+.tabs-r2 .tab{font-size:15px;padding:7px 4px;letter-spacing:1px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;padding:8px 10px}
 .chip{flex:0 0 auto;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:6px 13px;font-family:'Barlow Condensed';font-weight:700;font-size:15.5px;cursor:pointer}
 .chip.active{background:var(--gold);color:#06121f;border-color:var(--gold)}
@@ -242,6 +244,8 @@ body.light .bs{color:var(--text)}
       <div class="tab active" data-v="hoy">Hoy</div>
       <div class="tab" data-v="grupos">Grupos</div>
       <div class="tab" data-v="llaves">Fase Final</div>
+    </div>
+    <div class="tabs tabs-r2">
       <div class="tab" data-v="arg">Argentina</div>
       <div class="tab" data-v="stats">Estadísticas</div>
     </div>
@@ -723,20 +727,21 @@ function renderArg(){
     html+='</div></div>';}
   cont.innerHTML=html;}
 function updateChampion(){const champ=koWinnerLoser(104).w;const cb=document.getElementById('championBanner');if(!cb)return;
-  if(champ){cb.classList.remove('hidden');cb.innerHTML=`<div class="lbl">Campe&oacute;n del Mundo 2026</div><div class="name">${champ===ARG?'&#127462;&#127479; ':''}${champ} &#127942;</div><div class="sub">Final &middot; MetLife Stadium &middot; 19 jul</div>`;}
+  /* solo mostrar si hay resultado REAL de la final, no pronóstico */
+  if(champ&&hasRealResult('M104')){cb.classList.remove('hidden');cb.innerHTML=`<div class="lbl">Campe&oacute;n del Mundo 2026</div><div class="name">${champ===ARG?'&#127462;&#127479; ':''}${champ} &#127942;</div><div class="sub">Final &middot; MetLife Stadium &middot; 19 jul</div>`;}
   else cb.classList.add('hidden');}
 
 function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();renderStats();updateChampion();}
-/* ---------- estadísticas ---------- */
+/* ---------- estadísticas (solo datos reales, sin pronóstico) ---------- */
 let _stats=null;
 function renderStats(){
   const cont=document.getElementById('view-stats');if(!cont)return;
-  // Estadísticas computadas desde STATE.results
+  /* Solo resultados reales (hasRealResult descarta simulaciones) */
   const ts={};const ti=t=>{if(!ts[t])ts[t]={gf:0,gc:0,w:0,d:0,l:0,pj:0};};
   let totalG=0,totalM=0,cs=0,locW=0,emp=0,visW=0,maxG=-1,maxMStr='';
   DATA.groupMatches.forEach(m=>{
-    const r=STATE.results[m.id];if(!r||r.h===''||r.a===''||r.h==null||r.a==null)return;
-    const hg=+r.h,ag=+r.a;if(isNaN(hg)||isNaN(ag))return;
+    if(!hasRealResult(m.id))return;
+    const r=STATE.results[m.id];const hg=+r.h,ag=+r.a;
     ti(m.home);ti(m.away);
     ts[m.home].gf+=hg;ts[m.home].gc+=ag;ts[m.home].pj++;
     ts[m.away].gf+=ag;ts[m.away].gc+=hg;ts[m.away].pj++;
@@ -744,10 +749,11 @@ function renderStats(){
     totalG+=hg+ag;totalM++;
     if(hg===0)cs++;if(ag===0)cs++;
     if(hg>ag)locW++;else if(hg===ag)emp++;else visW++;
-    if(hg+ag>maxG){maxG=hg+ag;maxMStr=`${m.home} ${hg}-${ag} ${m.away}`;}});
+    if(hg+ag>maxG){maxG=hg+ag;maxMStr=`${m.home} ${hg}–${ag} ${m.away}`;}});
   const teams=Object.entries(ts).filter(([,v])=>v.pj>0).sort((a,b)=>b[1].gf-a[1].gf||(b[1].gf-b[1].gc)-(a[1].gf-a[1].gc)||b[1].w-a[1].w);
   let h='<div class="wrap">';
-  if(totalM>0){
+  if(totalM===0){h+=`<div class="note">Todavía no hay resultados reales cargados. Usá &#8635; Actualizar para traer los datos.</div>`;}
+  else{
     const avg=(totalG/totalM).toFixed(1);
     h+=`<div class="sg"><div class="sc2"><div class="sv">${totalG}</div><div class="sl">Goles totales</div></div>`+
        `<div class="sc2"><div class="sv">${avg}</div><div class="sl">Goles por partido</div></div>`+
@@ -756,43 +762,57 @@ function renderStats(){
     h+=`<div class="stat-s"><div class="stat-h">Resultados fase de grupos</div>`+
        `<div style="display:flex;gap:14px;font-family:'Barlow Condensed';font-size:15px;flex-wrap:wrap">`+
        `<span>&#127968; Local: <b style="color:var(--gold)">${locW}</b></span>`+
-       `<span>&#x1f7F0; Empate: <b>${emp}</b></span>`+
+       `<span>X Empate: <b>${emp}</b></span>`+
        `<span>&#128499; Visitante: <b>${visW}</b></span></div>`+
-       (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">Más goles: ${maxMStr} (${maxG})</div>`:'')+
-       '</div>';}
-  if(teams.length>0){
+       (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">M&aacute;s goles: ${maxMStr} (${maxG})</div>`:'')+
+       '</div>';
     h+=`<div class="stat-s"><div class="stat-h">Goles por equipo — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
     teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
       h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
     h+='</tbody></table></div>';}
-  // Goleadores y asistencias (ESPN)
+  /* Goleadores y asistencias individuales (ESPN) */
   h+=`<div class="stat-s"><div class="stat-h">Goleadores individuales</div>`;
-  if(_stats){
-    const L=_stats.leaders||[];
-    const gL=L.find(l=>/^goals$/i.test(l.name)||l.displayName==='Goals');
-    const aL=L.find(l=>/^assists$/i.test(l.name)||l.displayName==='Assists');
+  if(_stats&&!_stats._failed){
+    const L=_stats.leaders||_stats.statistics||[];
+    const gL=L.find(l=>/^goals?$/i.test(l.name)||/^Goals?$/.test(l.displayName));
+    const aL=L.find(l=>/^assists?$/i.test(l.name)||/^Assists?$/.test(l.displayName));
     const yL=L.find(l=>/yellowCard/i.test(l.name));
     const mkTable=(rows,icon)=>{
-      if(!rows||!rows.length)return '<div style="color:var(--muted);font-family:\'Barlow Condensed\';font-size:14px">Sin datos disponibles.</div>';
-      let t='<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l g">País</th><th>'+icon+'</th></tr></thead><tbody>';
+      if(!rows||!rows.length)return `<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px">Sin datos en esta categor&iacute;a.</div>`;
+      let t=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l g">Pa&iacute;s</th><th>${icon}</th></tr></thead><tbody>`;
       rows.slice(0,10).forEach((p,i)=>{
-        const nm=p.athlete&&p.athlete.displayName||p.displayName||'—';
-        const tm=p.athlete&&p.athlete.team&&(p.athlete.team.displayName||p.athlete.team.abbreviation)||'';
+        const nm=(p.athlete&&p.athlete.displayName)||p.displayName||'—';
+        const tm=(p.athlete&&p.athlete.team&&(p.athlete.team.displayName||p.athlete.team.abbreviation))||'';
         t+=`<tr><td class="l g">${i+1}</td><td class="l">${nm}</td><td class="l g">${tm}</td><td style="color:var(--gold);font-weight:700">${p.value||p.displayValue||0}</td></tr>`;});
       return t+'</tbody></table>';};
-    h+=mkTable(gL&&gL.leaders,'⚽');
+    const goalsRows=gL&&gL.leaders;
+    h+=mkTable(goalsRows,'⚽');
     if(aL&&aL.leaders&&aL.leaders.length){h+=`<div class="stat-h" style="margin-top:14px">Asistencias</div>`+mkTable(aL.leaders,'🎯');}
     if(yL&&yL.leaders&&yL.leaders.length){h+=`<div class="stat-h" style="margin-top:14px">Tarjetas amarillas</div>`+mkTable(yL.leaders,'🟨');}
+  }else if(_stats&&_stats._failed){
+    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;line-height:1.5">No se pudo obtener estadísticas individuales desde la API de ESPN para el Mundial 2026.<br>Podés consultarlas en <b>fifa.com</b> o buscando en Google "goleadores Mundial 2026".</div>`;
   }else{
-    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:8px 0">Tocá el botón para ver goleadores y asistencias en tiempo real desde ESPN.</div>`;}
-  h+=`<button onclick="loadStats()" style="margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estadísticas de jugadores</button>`;
+    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0 8px">Toc&aacute; el bot&oacute;n para cargar goleadores y asistencias en tiempo real.</div>`;}
+  h+=`<button onclick="loadStats()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estad&iacute;sticas de jugadores</button>`;
   h+='</div></div>';
   cont.innerHTML=h;}
 async function loadStats(){
-  try{toast('Cargando estadísticas...');
-    const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders?limit=20');
-    const j=await r.json();_stats=j;renderStats();toast('✅ Estadísticas actualizadas');}
-  catch(e){toast('⚠️ No se pudieron cargar estadísticas de ESPN');}}
+  /* Intenta múltiples endpoints de ESPN en secuencia hasta encontrar datos de líderes */
+  const URLS=[
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders?limit=20',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders',
+  ];
+  toast('Cargando estadísticas...');
+  for(const url of URLS){
+    try{
+      const r=await fetch(url);if(!r.ok)continue;
+      const j=await r.json();
+      const src=j.leaders||j.statistics;
+      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
+        _stats=j;renderStats();toast('✅ Estadísticas actualizadas');return;}
+    }catch(e){continue;}}
+  _stats={_failed:true};renderStats();toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
