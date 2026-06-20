@@ -760,7 +760,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const SB_HDR={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
 const API_URLS=['https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=4429&s=2026','https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=4429'];
 const ESPN_BASE='https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
-function espnEvts(j){const out=[];((j&&j.events)||[]).forEach(ev=>{const comp=(ev.competitions||[])[0];if(!comp)return;const st=(ev.status&&ev.status.type)||(comp.status&&comp.status.type)||{};if(!st.completed&&st.state!=='post')return;const hc=(comp.competitors||[]).find(c=>c.homeAway==='home'),ac=(comp.competitors||[]).find(c=>c.homeAway==='away');if(!hc||!ac)return;const hs=+hc.score,as=+ac.score;if(isNaN(hs)||isNaN(as))return;out.push({home:(hc.team||{}).displayName||'',away:(ac.team||{}).displayName||'',hs,as,time:Date.parse(comp.date||ev.date||'')});});return out;}
+function espnEvts(j){const out=[];((j&&j.events)||[]).forEach(ev=>{const comp=(ev.competitions||[])[0];if(!comp)return;const st=(ev.status&&ev.status.type)||(comp.status&&comp.status.type)||{};if(!st.completed&&st.state!=='post')return;const hc=(comp.competitors||[]).find(c=>c.homeAway==='home'),ac=(comp.competitors||[]).find(c=>c.homeAway==='away');if(!hc||!ac)return;const hs=hc.score==null||hc.score===''?0:+hc.score,as=ac.score==null||ac.score===''?0:+ac.score;if(isNaN(hs)||isNaN(as))return;out.push({home:(hc.team||{}).displayName||'',away:(ac.team||{}).displayName||'',hs,as,time:Date.parse(comp.date||ev.date||'')});});return out;}
 const DONE_STATUS={'FT':1,'AET':1,'PEN':1,'Match Finished':1,'Finished':1};
 function eventTime(e){if(e.strTimestamp){const t=Date.parse(/Z$|[+-]\d\d:?\d\d$/.test(e.strTimestamp)?e.strTimestamp:e.strTimestamp+'Z');if(!isNaN(t))return t;}return Date.parse((e.dateEvent||'')+'T12:00:00Z');}
 const NEAR=26*36e5; /* mismo par de equipos a ±26 h del kickoff = el mismo partido */
@@ -804,8 +804,10 @@ async function updateResults(){
     if(Array.isArray(j))evts=j.map(x=>({home:x.home,away:x.away,hs:+x.home_score,as:+x.away_score,time:Date.parse(x.kickoff)}));}catch(e){}
   const tsRes=restRes.slice(0,2),espRes=restRes.slice(2);
   const tsEvts=tsRes.flatMap(r=>(r.status==='fulfilled'&&r.value&&r.value.events)||[]).reduce((a,e)=>{
-    if(!DONE_STATUS[e.strStatus]||e.intHomeScore==null||e.intAwayScore==null||e.intHomeScore===''||e.intAwayScore==='')return a;
-    const hs=+e.intHomeScore,as=+e.intAwayScore;if(!isNaN(hs)&&!isNaN(as))a.push({home:e.strHomeTeam,away:e.strAwayTeam,hs,as,time:eventTime(e)});
+    if(!DONE_STATUS[e.strStatus])return a;
+    const hs=e.intHomeScore==null||e.intHomeScore===''?0:+e.intHomeScore;
+    const as=e.intAwayScore==null||e.intAwayScore===''?0:+e.intAwayScore;
+    if(!isNaN(hs)&&!isNaN(as))a.push({home:e.strHomeTeam,away:e.strAwayTeam,hs,as,time:eventTime(e)});
     return a;},[]);
   const esnEvts=espRes.flatMap(r=>r.status==='fulfilled'?espnEvts(r.value):[]);
   const extraEvts=[...tsEvts,...esnEvts];
