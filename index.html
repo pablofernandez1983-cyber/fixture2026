@@ -797,33 +797,20 @@ function renderStats(){
   h+='</div></div>';
   cont.innerHTML=h;}
 async function loadStats(){
-  /* Intenta múltiples endpoints de ESPN en secuencia hasta encontrar datos de líderes */
+  /* Endpoint confirmado: /statistics devuelve {stats:[{name:"goalsLeaders",...},{name:"assistsLeaders",...}]} */
   const URLS=[
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders?limit=20&season=2026',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders?limit=20',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/leaders?limit=20',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20&season=2026',
     'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/leaders',
-    'https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/seasons/2026/leaders',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20&season=2026',
   ];
   toast('Cargando estadísticas...');
-  function hasLeaders(src){
-    if(!src||!Array.isArray(src)||!src.length)return false;
-    return src.some(s=>{
-      const L=s.leaders||s.athletes||s.categories;
-      return L&&Array.isArray(L)&&L.length>0;});}
   for(const url of URLS){
     try{
       const r=await fetch(url);if(!r.ok)continue;
       const j=await r.json();
-      /* normalizar: puede venir en j.leaders, j.statistics, o j.categories */
-      let src=j.leaders||j.statistics||j.categories;
-      /* algunos endpoints envuelven en {sports:[{leagues:[{season:{leaders:[...]}}]}]} */
-      if(!src&&j.sports){try{src=j.sports[0].leagues[0].season.leaders||j.sports[0].leagues[0].season.statistics;}catch(e){}}
-      /* ESPN core api devuelve {items:[...]} */
-      if(!src&&j.items&&Array.isArray(j.items)){src=j.items;}
-      if(hasLeaders(src)){_stats={leaders:src};renderStats();toast('✅ Estadísticas actualizadas');return;}
+      /* ESPN devuelve la clave "stats", no "leaders" ni "statistics" */
+      const src=j.stats||j.leaders||j.statistics;
+      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
+        _stats={leaders:src};renderStats();toast('✅ Estadísticas actualizadas');return;}
     }catch(e){continue;}}
   _stats={_failed:true};renderStats();toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
 
