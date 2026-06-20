@@ -53,8 +53,8 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .pts{font-weight:700;color:#fff}
 .match{display:flex;align-items:center;padding:9px 12px;gap:8px}
 .match.arg{background:rgba(255,184,0,.06)}
-.m-when{flex:0 0 80px;font-family:'Barlow Condensed';font-size:13px;color:var(--muted);line-height:1.2}
-.m-when .d{color:var(--text);font-weight:700;font-size:14px;text-transform:capitalize}
+.m-when{flex:0 0 86px;font-family:'Barlow Condensed';font-size:14px;font-weight:600;color:var(--text);line-height:1.25}
+.m-when .d{color:var(--text);font-weight:700;font-size:16px;text-transform:capitalize}
 .m-when.live .d{color:var(--red)}
 .m-teams{flex:1;min-width:0}
 .m-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
@@ -202,6 +202,10 @@ body.light .pts{color:var(--text)}
 body.light .rkrow .rkp{color:var(--text)}
 body.light .minfo{color:var(--text)}
 body.light .bs{color:var(--text)}
+body.light .sc input{color:var(--text);background:var(--surface)}
+body.light .modal .mx{color:var(--muted)}
+body.light .advbtn{color:var(--muted);background:var(--surface2)}
+body.light .ko-meta span:last-child{color:var(--muted)}
 /* ---------- cuotas ---------- */
 .m-odds{margin-top:5px;display:flex;gap:4px;align-items:center;font-family:'Barlow Condensed';font-size:13px;flex-wrap:wrap}
 .m-odds .ov{color:var(--gold);font-family:'Bebas Neue';font-size:16px;line-height:1}
@@ -367,6 +371,33 @@ const ACT_ODDS={
  'Uzbekistán':66,'Irak':66,'Cabo Verde':66,'Jordania':66,'Arabia Saudita':66,'Nueva Zelanda':66,'Haití':66,'Curazao':66};
 const FIFA_TOP=['Francia','España','Argentina','Inglaterra','Portugal','Brasil','Países Bajos','Marruecos','Bélgica','Alemania'];
 const ODDS_TOP=['España','Francia','Inglaterra','Brasil','Portugal','Argentina','Alemania','Países Bajos','Bélgica','Noruega'];
+/* Cuotas campeon — Oddschecker / FanDuel / DraftKings jun 2026 (American odds) */
+const CHAMP_ODDS=[
+  {team:'España',      ml:'+450'},{team:'Francia',     ml:'+480'},
+  {team:'Inglaterra',  ml:'+650'},{team:'Brasil',      ml:'+850'},
+  {team:'Portugal',    ml:'+900'},{team:'Argentina',   ml:'+950'},
+  {team:'Alemania',    ml:'+1200'},{team:'Países Bajos',ml:'+1400'},
+  {team:'Bélgica',     ml:'+2000'},{team:'Noruega',    ml:'+2500'},
+  {team:'Colombia',    ml:'+3000'},{team:'Uruguay',    ml:'+4000'},
+];
+/* Goleadores all-time de Mundiales (pre-2026) — Fuente: FIFA */
+const HIST_SCORERS=[
+  {name:'Miroslav Klose',   country:'Alemania',  goals:16, era:'2002-2014'},
+  {name:'Ronaldo',          country:'Brasil',    goals:15, era:'1994-2006'},
+  {name:'Gerd Müller',      country:'Alemania',  goals:14, era:'1970-1974'},
+  {name:'Just Fontaine',    country:'Francia',   goals:13, era:'1958'},
+  {name:'Lionel Messi',     country:'Argentina', goals:13, era:'2006-2022'},
+  {name:'Pelé',             country:'Brasil',    goals:12, era:'1958-1970'},
+  {name:'Sandor Kocsis',    country:'Hungría',   goals:11, era:'1954'},
+  {name:'Jürgen Klinsmann', country:'Alemania',  goals:11, era:'1990-1998'},
+  {name:'Thomas Müller',    country:'Alemania',  goals:10, era:'2010-2018'},
+  {name:'Gary Lineker',     country:'Inglaterra',goals:10, era:'1986-1990'},
+  {name:'Gabriel Batistuta',country:'Argentina', goals:10, era:'1994-2002'},
+  {name:'Teófilo Cubillas', country:'Perú',      goals:10, era:'1970-1978'},
+  {name:'Grzegorz Lato',    country:'Polonia',   goals:10, era:'1974-1982'},
+  {name:'Helmut Rahn',      country:'Alemania',  goals:10, era:'1954-1958'},
+  {name:'Eusébio',          country:'Portugal',  goals:9,  era:'1966'},
+];
 const HOSTS={'México':1,'Estados Unidos':1,'Canadá':1};
 function POW(t){const s=getSim();
   const wH=s.wHist,wF=s.wFifa,wO=s.wOdds,tot=wH+wF+wO||1;
@@ -794,7 +825,26 @@ function renderStats(){
   }else{
     h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0 8px">Toc&aacute; el bot&oacute;n para cargar goleadores y asistencias en tiempo real.</div>`;}
   h+=`<button onclick="loadStats()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estad&iacute;sticas de jugadores</button>`;
-  h+='</div></div>';
+  h+='</div>'; /* cierra stat-s ESPN */
+
+  /* ── Favorito para ganar según casas de apuestas ── */
+  h+=`<div class="stat-s"><div class="stat-h">Favorito para ganar el Mundial · Apuestas (jun 2026)</div><div class="rank">`;
+  CHAMP_ODDS.forEach((c,i)=>{
+    const n=+c.ml.replace('+','');const prob=(100/(n+100)*100).toFixed(1);const isArg=c.team==='Argentina';
+    h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${c.team}</span><span class="rkg" style="flex:0 0 60px;text-align:right;font-family:'Bebas Neue';font-size:14px;color:var(--gold)">${c.ml}</span><span class="rkp">${prob}%</span></div>`;});
+  h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Cuotas americanas (American odds) · Oddschecker/FanDuel/DraftKings. Probabilidad implícita calculada, sin descontar margen de la casa.</div></div>`;
+
+  /* ── Goleadores históricos de Mundiales ── */
+  h+=`<div class="stat-s"><div class="stat-h">Goleadores hist&oacute;ricos · todos los Mundiales (pre-2026)</div>`;
+  h+=`<table class="stb"><thead><tr><th class="l">#</th><th class="l">Jugador</th><th class="l">Pa&iacute;s</th><th class="l g">Edici&oacute;n(es)</th><th>&#9917;</th></tr></thead><tbody>`;
+  let rank=0,prevG=-1;
+  HIST_SCORERS.sort((a,b)=>b.goals-a.goals).forEach((p,i)=>{
+    if(p.goals!==prevG){rank=i+1;prevG=p.goals;}
+    const isArg=p.country==='Argentina';
+    h+=`<tr><td class="l g">${rank}</td><td class="l ${isArg?'arg':''}" style="font-weight:600">${p.name}</td><td class="l g">${p.country}</td><td class="l g">${p.era}</td><td style="color:var(--gold);font-weight:700">${p.goals}</td></tr>`;});
+  h+=`</tbody></table><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Fuente: FIFA. No incluye los goles de 2026. Messi (13) podr&iacute;a sumar si juega este Mundial.</div></div>`;
+
+  h+='</div>'; /* cierra wrap */
   cont.innerHTML=h;}
 async function loadStats(){
   /* Endpoint confirmado: /statistics devuelve {stats:[{name:"goalsLeaders",...},{name:"assistsLeaders",...}]} */
