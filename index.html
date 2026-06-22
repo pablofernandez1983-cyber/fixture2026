@@ -772,6 +772,30 @@ function updateChampion(){const champ=koWinnerLoser(104).w;const cb=document.get
 function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();renderStats();updateChampion();}
 /* ---------- estadísticas (solo datos reales, sin pronóstico) ---------- */
 let _stats=null;
+let _champProbs=null,_champProbsN=0,_champProbsRunning=false;
+async function calcChampProbs(N){
+  N=N||500;if(_champProbsRunning)return;_champProbsRunning=true;
+  renderStats();toast('Simulando '+N+' torneos...');
+  const sv={res:JSON.parse(JSON.stringify(STATE.results)),adv:JSON.parse(JSON.stringify(STATE.adv)),pens:JSON.parse(JSON.stringify(STATE.pens)),sim:JSON.parse(JSON.stringify(STATE.sim))};
+  const mcSim=JSON.parse(JSON.stringify(getSim()));if(mcSim.det){mcSim.det=false;mcSim.K=4.4;}STATE.sim=mcSim;
+  const realR={};DATA.groupMatches.concat(DATA.koMatches).forEach(m=>{if(hasRealResult(m.id))realR[m.id]=Object.assign({},STATE.results[m.id]);});
+  const wins={};Object.values(DATA.groups).flat().forEach(t=>wins[t]=0);
+  for(let i=0;i<N;i++){
+    STATE.results={};STATE.adv={};STATE.pens={};Object.assign(STATE.results,realR);
+    DATA.groupMatches.forEach(m=>{if(STATE.results[m.id])return;const r=simMatch(m.home,m.away,false);STATE.results[m.id]={h:r.h,a:r.a,sim:true};});
+    recompute();
+    for(const rnd of['R32','R16','QF','SF','3P','F']){
+      DATA.koMatches.filter(m=>m.round===rnd).forEach(m=>{
+        const h=resolveKoTeam(m,'home').team,a=resolveKoTeam(m,'away').team;if(!h||!a)return;
+        if(STATE.results[m.id])return;
+        const r=simMatch(h,a,true);STATE.results[m.id]={h:r.h,a:r.a,sim:true};
+        if(r.h===r.a){const hw=Math.random()<r.pH/(r.pH+r.pA);const pp=genPens();STATE.adv[m.id]=hw?'home':'away';STATE.pens[m.id]=hw?{h:pp.winner,a:pp.loser}:{h:pp.loser,a:pp.winner};}
+      });recompute();}
+    const w=koWinnerLoser(104).w;if(w)wins[w]=(wins[w]||0)+1;
+    if(i%20===19)await new Promise(r=>setTimeout(r,0));}
+  STATE.results=sv.res;STATE.adv=sv.adv;STATE.pens=sv.pens;STATE.sim=sv.sim;recompute();
+  _champProbs=Object.entries(wins).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]).map(([team,count])=>({team,pct:+(count/N*100).toFixed(1)}));
+  _champProbsN=N;_champProbsRunning=false;renderStats();toast('✅ '+N+' simulaciones completadas');}
 function renderStats(){
   const cont=document.getElementById('view-stats');if(!cont)return;
   /* Solo resultados reales (hasRealResult descarta simulaciones) */
@@ -834,12 +858,22 @@ function renderStats(){
   h+=`<button onclick="loadStats()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estad&iacute;sticas de jugadores</button>`;
   h+='</div>'; /* cierra stat-s ESPN */
 
-  /* ── Favorito para ganar según casas de apuestas ── */
-  h+=`<div class="stat-s"><div class="stat-h">Favorito para ganar el Mundial · Apuestas (jun 2026)</div><div class="rank">`;
-  CHAMP_ODDS.forEach((c,i)=>{
-    const n=+c.ml.replace('+','');const prob=(100/(n+100)*100).toFixed(1);const isArg=c.team==='Argentina';
-    h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${c.team}</span><span class="rkg" style="flex:0 0 60px;text-align:right;font-family:'Bebas Neue';font-size:14px;color:var(--gold)">${c.ml}</span><span class="rkp">${prob}%</span></div>`;});
-  h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Cuotas americanas (American odds) · Oddschecker/FanDuel/DraftKings. Probabilidad implícita calculada, sin descontar margen de la casa.</div></div>`;
+  /* ── Probabilidades de campeón (Monte Carlo + apuestas de referencia) ── */
+  const hasAnyReal=Object.keys(STATE.results).some(id=>hasRealResult(id));
+  h+=`<div class="stat-s">`;
+  if(_champProbs){
+    h+=`<div class="stat-h">Probabilidades de campe&oacute;n &middot; simulador (${_champProbsN} torneos desde estado actual)</div><div class="rank">`;
+    _champProbs.slice(0,12).forEach((c,i)=>{const isArg=c.team==='Argentina';
+      h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${c.team}</span><span class="rkg" style="flex:0 0 70px;text-align:right;font-family:'Barlow Condensed';font-size:12px;color:var(--muted)">simulaci&oacute;n</span><span class="rkp">${c.pct}%</span></div>`;});
+    h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Monte Carlo: simula el torneo completo desde los resultados reales ya cargados, usando el modelo de fuerza. Puls&aacute; para actualizar.</div>`;
+  } else {
+    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Apuestas jun 2026</div><div class="rank">`;
+    CHAMP_ODDS.forEach((c,i)=>{const n=+c.ml.replace('+','');const prob=(100/(n+100)*100).toFixed(1);const isArg=c.team==='Argentina';
+      h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${c.team}</span><span class="rkg" style="flex:0 0 60px;text-align:right;font-family:'Bebas Neue';font-size:14px;color:var(--gold)">${c.ml}</span><span class="rkp">${prob}%</span></div>`;});
+    h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Cuotas americanas &middot; Oddschecker/FanDuel jun 2026 (est&aacute;tico). ${hasAnyReal?'Puls&aacute; para calcular con los resultados reales actuales.':'Carg&aacute; resultados primero.'}</div>`;
+  }
+  h+=`<button onclick="calcChampProbs()" ${_champProbsRunning?'disabled':''} style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:${_champProbsRunning?'var(--muted)':'var(--gold)'};font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#127922; ${_champProbsRunning?'Simulando…':'Recalcular probabilidades (500 torneos)'}</button>`;
+  h+=`</div>`;
 
   /* ── Goleadores históricos de Mundiales (+ 2026 en vivo si ya cargó ESPN) ── */
   const espn2026={};
@@ -901,7 +935,7 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
 const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
-  if(v==='stats'&&!_stats)loadStats();});
+  if(v==='stats'){if(!_stats)loadStats();if(!_champProbs&&!_champProbsRunning&&Object.keys(STATE.results).some(id=>hasRealResult(id)))calcChampProbs();}});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
@@ -1026,7 +1060,7 @@ async function updateResults(){
   btn.disabled=false;btn.innerHTML='&#8635;';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
   const updated=applyEvents(evts);persist();rerender();
-  if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');}
+  if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');_champProbs=null;}
   else{note.textContent='Sin resultados nuevos';toast('Sin resultados nuevos por ahora');}}
 document.getElementById('btnUpd').onclick=updateResults;
 
