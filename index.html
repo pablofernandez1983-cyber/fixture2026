@@ -875,9 +875,12 @@ function renderStats(){
   h+=`<button onclick="${_bettingOddsLoading?'':(_bettingOdds?'refreshBettingOdds()':'fetchBettingOdds()')}" ${_bettingOddsLoading?'disabled':''} style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:${_bettingOddsLoading?'var(--muted)':'var(--gold)'};font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; ${_bettingOddsLoading?'Cargando...':(_bettingOdds?'Actualizar cuotas (Oddschecker)':'Cargar cuotas de apuestas')}</button>`;
   h+=`</div>`;
 
-  /* ── Goleadores históricos de Mundiales (+ 2026 en vivo si ya cargó ESPN) ── */
+  /* ── Goleadores históricos de Mundiales (+ 2026 en vivo) ── */
   const espn2026={};
-  if(_stats&&!_stats._failed){
+  // Preferir _summaryGoals (match summaries, real-time) sobre el endpoint de estadísticas agregadas (puede laggar)
+  if(_summaryGoals&&Object.keys(_summaryGoals).length>0){
+    Object.assign(espn2026,_summaryGoals);
+  }else if(_stats&&!_stats._failed){
     const gL=(_stats.leaders||[]).find(l=>/goals/i.test(l.displayName));
     (gL&&gL.leaders||[]).forEach(p=>{if(p.athlete&&p.athlete.displayName)espn2026[p.athlete.displayName]=+(p.value||0);});}
   const maxPre=Math.max(...HIST_SCORERS.map(p=>p.goals));
@@ -899,29 +902,58 @@ function renderStats(){
     const goalsCell=has2026Data&&p.g2026>0?`+${p.g2026}`:(has2026Data?'-':p.era);
     const rowStyle=isRecord||isTie?'background:rgba(255,184,0,.1)':'';
     h+=`<tr style="${rowStyle}"><td class="l g">${hrank}</td><td class="l ${isArg?'arg':''}" style="font-weight:600">${p.name}${badge}</td><td class="l g">${p.country}</td><td class="l g">${goalsCell}</td><td style="color:var(--gold);font-weight:700">${p.total}</td></tr>`;});
+  const src2026=(_summaryGoals&&Object.keys(_summaryGoals).length>0)?'resúmenes de partidos ESPN':'ESPN estadísticas';
   const noteText=has2026Data
-    ?`Totales incluyen goles de 2026 (ESPN en vivo). Fuente hist&oacute;rica: FIFA.`
+    ?`Totales incluyen goles de 2026 (${src2026}, en vivo). Fuente hist&oacute;rica: FIFA.`
     :`Datos pre-2026 (FIFA). Los totales se actualizan al cargar las estad&iacute;sticas de ESPN.`;
   h+=`</tbody></table><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">${noteText}</div></div>`;
 
   h+='</div>'; /* cierra wrap */
   cont.innerHTML=h;}
-let _statsAt=null;
+let _statsAt=null,_summaryGoals=null;
+async function buildSummaryGoals(){
+  try{
+    const done=DATA.groupMatches.filter(m=>hasRealResult(m.id));
+    if(!done.length)return{};
+    const dates=[...new Set(done.map(m=>m.kickoff.slice(0,10).replace(/-/g,'')))];
+    const boards=await Promise.all(dates.map(d=>
+      fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates='+d+'&limit=20')
+      .then(r=>r.ok?r.json():null).catch(()=>null)));
+    const eids=[];
+    boards.forEach(j=>{if(!j)return;(j.events||[]).forEach(e=>{
+      if(e.competitions&&e.competitions[0]&&e.competitions[0].status&&e.competitions[0].status.type&&e.competitions[0].status.type.completed)
+        eids.push(e.id);});});
+    if(!eids.length)return{};
+    const goals={};
+    for(let i=0;i<eids.length;i+=8){
+      const s=await Promise.all(eids.slice(i,i+8).map(id=>
+        fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event='+id)
+        .then(r=>r.ok?r.json():null).catch(()=>null)));
+      s.forEach(sj=>{if(!sj)return;
+        ((sj.competitions&&sj.competitions[0]&&sj.competitions[0].details)||[]).forEach(d=>{
+          if(d.type&&d.type.text==='Goal'&&d.athletesInvolved&&d.athletesInvolved[0])
+            {const n=d.athletesInvolved[0].displayName;goals[n]=(goals[n]||0)+1;}});});}
+    return goals;
+  }catch(e){return{};}}
 async function loadStats(){
   const URLS=[
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20&season=2026',
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=50&season=2026',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=50',
   ];
   toast('Cargando estadísticas...');
-  for(const url of URLS){
-    try{
-      const r=await fetch(url);if(!r.ok)continue;
-      const j=await r.json();
+  const [statsResult,summaryResult]=await Promise.allSettled([
+    (async()=>{for(const url of URLS){try{const r=await fetch(url);if(!r.ok)continue;const j=await r.json();
       const src=j.stats||j.leaders||j.statistics;
-      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
-        _stats={leaders:src};_statsAt=new Date();renderStats();toast('✅ Estadísticas actualizadas');return;}
-    }catch(e){continue;}}
-  _stats={_failed:true};_statsAt=new Date();renderStats();toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
+      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0))return src;}catch(e){}}return null;})(),
+    buildSummaryGoals()
+  ]);
+  const src=statsResult.status==='fulfilled'?statsResult.value:null;
+  const sg=summaryResult.status==='fulfilled'?summaryResult.value:{};
+  if(Object.keys(sg).length>0)_summaryGoals=sg;
+  if(src){_stats={leaders:src};_statsAt=new Date();renderStats();toast('✅ Estadísticas actualizadas');return;}
+  _stats={_failed:true};_statsAt=new Date();renderStats();
+  if(_summaryGoals&&Object.keys(_summaryGoals).length>0)toast('✅ Goleadores actualizados desde partidos individuales');
+  else toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
@@ -934,7 +966,7 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
 const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
-  if(v==='stats'){if(!_stats||!_statsAt||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
+  if(v==='stats'){if(!_stats||!_statsAt||!_summaryGoals||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
@@ -1058,8 +1090,16 @@ async function updateResults(){
     else{const seen=new Set(evts.map(e=>norm(e.home)+'|'+norm(e.away)));extraEvts.forEach(t=>{if(!seen.has(norm(t.home)+'|'+norm(t.away)))evts.push(t);});}}
   btn.disabled=false;btn.innerHTML='&#8635;';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
-  const updated=applyEvents(evts);persist();rerender();
-  if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');_stats=null;_statsAt=null;}
+  const updated=applyEvents(evts);
+  // Limpiar resultados manuales para partidos que aún no empezaron
+  let clearedFuture=0;const nowTs=Date.now();
+  DATA.groupMatches.forEach(m=>{const r=STATE.results[m.id];
+    if(r&&!r.sim&&new Date(m.kickoff).getTime()>nowTs+2*3600000){delete STATE.results[m.id];clearedFuture++;}});
+  persist();rerender();
+  if(updated>0||clearedFuture>0){
+    note.textContent=updated+' partido(s) actualizado(s)'+(clearedFuture?' · '+clearedFuture+' futuro(s) borrado(s)':'');
+    toast('&#9989; '+updated+' resultado(s) actualizados'+(clearedFuture?' · borré '+clearedFuture+' resultado(s) futuro(s)':''));
+    _stats=null;_statsAt=null;_summaryGoals=null;}
   else{note.textContent='Sin resultados nuevos';toast('Sin resultados nuevos por ahora');}}
 document.getElementById('btnUpd').onclick=updateResults;
 
@@ -1080,6 +1120,11 @@ function setMode(m){viewMode=m;const btn=document.getElementById('btnMode');if(!
   setMode(viewMode);})();
 
 /* ---------- boot ---------- */
+/* Borrar resultados manuales (sin sim:true) para partidos que todavía no se jugaron */
+(function(){let dirty=false;const now=Date.now();
+  DATA.groupMatches.forEach(m=>{const r=STATE.results[m.id];
+    if(r&&!r.sim&&new Date(m.kickoff).getTime()>now+2*3600000){delete STATE.results[m.id];dirty=true;}});
+  if(dirty)persist();})();
 renderChips();rerender();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
