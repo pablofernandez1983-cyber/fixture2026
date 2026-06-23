@@ -849,7 +849,9 @@ function renderStats(){
     h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;line-height:1.5">No se pudo obtener estadísticas individuales desde la API de ESPN para el Mundial 2026.<br>Podés consultarlas en <b>fifa.com</b> o buscando en Google "goleadores Mundial 2026".</div>`;
   }else{
     h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0 8px">Toc&aacute; el bot&oacute;n para cargar goleadores y asistencias en tiempo real.</div>`;}
-  h+=`<button onclick="loadStats()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Cargar estad&iacute;sticas de jugadores</button>`;
+  const statsTs=_statsAt?new Date(_statsAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}):'';
+  h+=`<div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">ESPN actualiza las estad&iacute;sticas individuales 15&ndash;30 min despu&eacute;s del pitazo final.${statsTs?' &middot; &Uacute;ltima consulta: '+statsTs:''}</div>`;
+  h+=`<button onclick="loadStats()" style="margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Actualizar goleadores</button>`;
   h+='</div>'; /* cierra stat-s ESPN */
 
   /* ── Probabilidades de campeón — cuotas en vivo de apuestas (Oddschecker) ── */
@@ -904,23 +906,22 @@ function renderStats(){
 
   h+='</div>'; /* cierra wrap */
   cont.innerHTML=h;}
+let _statsAt=null;
 async function loadStats(){
-  /* Endpoint confirmado: /statistics devuelve {stats:[{name:"goalsLeaders",...},{name:"assistsLeaders",...}]} */
   const URLS=[
-    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20',
     'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20&season=2026',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=20',
   ];
   toast('Cargando estadísticas...');
   for(const url of URLS){
     try{
       const r=await fetch(url);if(!r.ok)continue;
       const j=await r.json();
-      /* ESPN devuelve la clave "stats", no "leaders" ni "statistics" */
       const src=j.stats||j.leaders||j.statistics;
       if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
-        _stats={leaders:src};renderStats();toast('✅ Estadísticas actualizadas');return;}
+        _stats={leaders:src};_statsAt=new Date();renderStats();toast('✅ Estadísticas actualizadas');return;}
     }catch(e){continue;}}
-  _stats={_failed:true};renderStats();toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
+  _stats={_failed:true};_statsAt=new Date();renderStats();toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
@@ -933,7 +934,7 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
 const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
-  if(v==='stats'){if(!_stats)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
+  if(v==='stats'){if(!_stats||!_statsAt||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
@@ -1058,7 +1059,7 @@ async function updateResults(){
   btn.disabled=false;btn.innerHTML='&#8635;';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
   const updated=applyEvents(evts);persist();rerender();
-  if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');}
+  if(updated>0){note.textContent=updated+' partido(s) actualizado(s)';toast('&#9989; '+updated+' resultado(s) actualizados');_stats=null;_statsAt=null;}
   else{note.textContent='Sin resultados nuevos';toast('Sin resultados nuevos por ahora');}}
 document.getElementById('btnUpd').onclick=updateResults;
 
