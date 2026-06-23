@@ -930,9 +930,9 @@ async function buildSummaryGoals(){
         fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event='+id)
         .then(r=>r.ok?r.json():null).catch(()=>null)));
       s.forEach(sj=>{if(!sj)return;
-        ((sj.competitions&&sj.competitions[0]&&sj.competitions[0].details)||[]).forEach(d=>{
-          if(d.type&&d.type.text==='Goal'&&d.athletesInvolved&&d.athletesInvolved[0])
-            {const n=d.athletesInvolved[0].displayName;goals[n]=(goals[n]||0)+1;}});});}
+        (sj.keyEvents||[]).filter(e=>e.scoringPlay).forEach(e=>{
+          const n=e.participants?.[0]?.athlete?.displayName;
+          if(n)goals[n]=(goals[n]||0)+1;});});}
     return goals;
   }catch(e){return{};}}
 async function loadStats(){
@@ -941,19 +941,19 @@ async function loadStats(){
     'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics?limit=50',
   ];
   toast('Cargando estadísticas...');
-  const [statsResult,summaryResult]=await Promise.allSettled([
-    (async()=>{for(const url of URLS){try{const r=await fetch(url);if(!r.ok)continue;const j=await r.json();
+  // Corre en background — actualiza la tabla histórica cuando termina (puede tardar 10-20s)
+  buildSummaryGoals().then(sg=>{
+    if(sg&&Object.keys(sg).length>0){_summaryGoals=sg;renderStats();toast('✅ Goles 2026 actualizados (en vivo)');}}
+  ).catch(()=>{});
+  // ESPN aggregate: rápido, actualiza goleadores individuales + asistencias
+  for(const url of URLS){
+    try{const r=await fetch(url);if(!r.ok)continue;const j=await r.json();
       const src=j.stats||j.leaders||j.statistics;
-      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0))return src;}catch(e){}}return null;})(),
-    buildSummaryGoals()
-  ]);
-  const src=statsResult.status==='fulfilled'?statsResult.value:null;
-  const sg=summaryResult.status==='fulfilled'?summaryResult.value:{};
-  if(Object.keys(sg).length>0)_summaryGoals=sg;
-  if(src){_stats={leaders:src};_statsAt=new Date();renderStats();toast('✅ Estadísticas actualizadas');return;}
+      if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
+        _stats={leaders:src};_statsAt=new Date();renderStats();toast('✅ Estadísticas actualizadas');return;}
+    }catch(e){continue;}}
   _stats={_failed:true};_statsAt=new Date();renderStats();
-  if(_summaryGoals&&Object.keys(_summaryGoals).length>0)toast('✅ Goleadores actualizados desde partidos individuales');
-  else toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
+  toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
 
 /* ---------- chips ---------- */
 function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
@@ -966,7 +966,7 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
 const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
-  if(v==='stats'){if(!_stats||!_statsAt||!_summaryGoals||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
+  if(v==='stats'){if(!_stats||!_statsAt||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
