@@ -1061,13 +1061,13 @@ function applyEvents(evts){let updated=0;const usados=new Set();
   evts.forEach((ev,i)=>{const h=toOurs(ev.home),a=toOurs(ev.away);if(!h||!a)return;
     const m=findGroupMatch(h,a,ev.time);if(!m)return;usados.add(i);
     let hh=ev.hs,aa=ev.as;if(m.home===a){const t=hh;hh=aa;aa=t;}
-    const prev=STATE.results[m.id];if(prev&&!prev.sim&&+prev.h===hh&&+prev.a===aa)return;
+    const prev=STATE.results[m.id];if(prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa)return;
     STATE.results[m.id]={h:hh,a:aa,src:'api'};updated++;});
   recompute(); /* con los grupos cargados se resuelven los equipos de la Fase Final */
   evts.forEach((ev,i)=>{if(usados.has(i))return;const h=toOurs(ev.home),a=toOurs(ev.away);if(!h||!a)return;
     const b=findKoMatch(h,a,ev.time);if(!b)return;
     let hh=ev.hs,aa=ev.as;if(b.th===a){const t=hh;hh=aa;aa=t;}
-    const prev=STATE.results[b.m.id];if(prev&&!prev.sim&&+prev.h===hh&&+prev.a===aa)return;
+    const prev=STATE.results[b.m.id];if(prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa)return;
     STATE.results[b.m.id]={h:hh,a:aa,src:'api'};updated++;}); /* si empata, penales/avanza se cargan a mano */
   return updated;}
 async function updateResults(){
