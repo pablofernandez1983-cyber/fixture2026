@@ -826,6 +826,18 @@ function renderStats(){
     teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
       h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
     h+='</tbody></table></div>';}
+  /* Tabla de mejores terceros */
+  {const allThirds=(_T&&_T.ranking)||[];const thirdsWithGames=allThirds.filter(t=>t.P>0);
+  if(thirdsWithGames.length>0){
+    h+=`<div class="stat-s"><div class="stat-h">Tabla de mejores terceros</div>`;
+    h+=`<table class="stb"><thead><tr><th class="l">Gr</th><th class="l">Equipo</th><th>PJ</th><th>Pts</th><th>DG</th><th>GF</th><th>GA</th><th></th></tr></thead><tbody>`;
+    allThirds.forEach((t,i)=>{
+      const qual=i<8;const isArg=t.team==='Argentina';const dg=t.GD;
+      const badge=qual?`<span style="color:var(--green);font-size:10px;font-weight:700">&#10003;</span>`:`<span style="color:var(--muted);font-size:10px">${i+1}º</span>`;
+      h+=`<tr style="${qual?'background:rgba(0,201,78,.07)':''}"><td class="l g">${t.g}</td><td class="l ${isArg?'arg':''}" style="font-weight:${qual?700:400}">${t.team}</td><td>${t.P}</td><td style="color:var(--gold);font-weight:700">${t.Pts}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td><td>${t.GF}</td><td>${t.GA}</td><td>${badge}</td></tr>`;});
+    h+=`</tbody></table>`;
+    h+=`<div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Los 8 mejores terceros (&#10003;) clasifican a los Dieciseisavos. Orden: Pts &bull; DG &bull; GF &bull; grupo. Se muestran los 12 terceros actuales (grupos incompletos son provisionales).</div>`;
+    h+=`</div>`;}}
   /* Goleadores y asistencias individuales (ESPN) */
   h+=`<div class="stat-s"><div class="stat-h">Goleadores individuales</div>`;
   if(_stats&&!_stats._failed){
@@ -1091,14 +1103,10 @@ async function updateResults(){
   btn.disabled=false;btn.innerHTML='&#8635;';
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
   const updated=applyEvents(evts);
-  // Limpiar resultados manuales para partidos que aún no empezaron
-  let clearedFuture=0;const nowTs=Date.now();
-  DATA.groupMatches.forEach(m=>{const r=STATE.results[m.id];
-    if(r&&!r.sim&&new Date(m.kickoff).getTime()>nowTs+2*3600000){delete STATE.results[m.id];clearedFuture++;}});
   persist();rerender();
-  if(updated>0||clearedFuture>0){
-    note.textContent=updated+' partido(s) actualizado(s)'+(clearedFuture?' · '+clearedFuture+' futuro(s) borrado(s)':'');
-    toast('&#9989; '+updated+' resultado(s) actualizados'+(clearedFuture?' · borré '+clearedFuture+' resultado(s) futuro(s)':''));
+  if(updated>0){
+    note.textContent=updated+' partido(s) actualizado(s)';
+    toast('&#9989; '+updated+' resultado(s) actualizados');
     _stats=null;_statsAt=null;_summaryGoals=null;}
   else{note.textContent='Sin resultados nuevos';toast('Sin resultados nuevos por ahora');}}
 document.getElementById('btnUpd').onclick=updateResults;
@@ -1120,11 +1128,6 @@ function setMode(m){viewMode=m;const btn=document.getElementById('btnMode');if(!
   setMode(viewMode);})();
 
 /* ---------- boot ---------- */
-/* Borrar resultados manuales (sin sim:true) para partidos que todavía no se jugaron */
-(function(){let dirty=false;const now=Date.now();
-  DATA.groupMatches.forEach(m=>{const r=STATE.results[m.id];
-    if(r&&!r.sim&&new Date(m.kickoff).getTime()>now+2*3600000){delete STATE.results[m.id];dirty=true;}});
-  if(dirty)persist();})();
 renderChips();rerender();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
