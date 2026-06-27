@@ -1,4 +1,4 @@
-const CACHE = 'mundial2026-v14';
+const CACHE = 'mundial2026-v15';
 const ASSETS = ['./', './index.html', './icon-192.png', './icon-512.png', './manifest.json'];
 
 self.addEventListener('install', e => {
