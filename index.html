@@ -136,7 +136,7 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .champ .lbl{font-family:'Barlow Condensed';font-weight:700;letter-spacing:2.5px;font-size:12px;text-transform:uppercase;opacity:.85}
 .champ .name{font-family:'Bebas Neue';font-size:40px;line-height:.95;letter-spacing:1px}
 .champ .sub{font-family:'Barlow Condensed';font-size:12px;font-weight:600;opacity:.85}
-.arg-status{font-family:'Bebas Neue';font-size:27px;color:var(--gold);padding:8px 4px 2px;letter-spacing:.5px}
+.arg-status{font-family:'Bebas Neue';font-size:32px;color:var(--gold);padding:8px 4px 2px;letter-spacing:.5px}
 .sec-h{font-family:'Bebas Neue';font-size:20px;color:#fff;margin:16px 0 4px;padding:0 4px;letter-spacing:.5px}
 .arow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:6px 0;cursor:pointer}
 .arow:active{border-color:var(--gold)}
@@ -145,7 +145,7 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .arow .ar-o .res{color:#fff;font-weight:700;font-family:'Bebas Neue';font-size:15px;margin:0 3px}
 .arow .ar-w{flex:0 0 60px;text-align:right;font-family:'Barlow Condensed';font-size:10.5px;color:var(--muted);line-height:1.2}
 .scn{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin:8px 0;overflow:hidden}
-.scn-h{background:var(--surface2);padding:9px 12px;font-family:'Bebas Neue';font-size:19px;letter-spacing:1px;color:var(--gold);display:flex;justify-content:space-between}
+.scn-h{background:var(--surface2);padding:9px 12px;font-family:'Bebas Neue';font-size:22px;letter-spacing:1px;color:var(--gold);display:flex;justify-content:space-between}
 .scn-b{padding:4px 10px 8px}
 .scn .arow{background:transparent;border:none;border-bottom:1px solid rgba(26,58,92,.4);border-radius:0;margin:0;padding:7px 2px}
 .scn .arow:last-child{border-bottom:none}
@@ -166,18 +166,20 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .champ-pick{border-top:1px solid var(--border);margin-top:14px;padding-top:12px}
 #champSel{width:100%;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:10px;font-family:'Barlow Condensed';font-weight:600;font-size:14.5px}
 .thirdcase{border:1px solid var(--border);border-radius:9px;margin:8px 0;padding:2px 8px 4px;background:rgba(10,38,64,.35)}
-.thirdcase-h{font-family:'Barlow Condensed';font-weight:700;font-size:15px;color:var(--blue);padding:7px 2px 3px;border-bottom:1px solid rgba(26,58,92,.4)}
+.thirdcase-h{font-family:'Barlow Condensed';font-weight:700;font-size:17px;color:var(--blue);padding:7px 2px 3px;border-bottom:1px solid rgba(26,58,92,.4)}
 .thirdcase .arow{padding:6px 2px}
-#view-arg .sec-h{font-size:22px}
-#view-arg .arow .ar-r{font-size:17px}
-#view-arg .arow .ar-o{font-size:16px}
-#view-arg .arow .ar-o .res{font-size:17.5px}
-#view-arg .arow .ar-w{font-size:12.5px}
-#view-arg .note{font-size:14px}
+#view-arg .sec-h{font-size:26px}
+#view-arg .arow .ar-r{font-size:20px}
+#view-arg .arow .ar-o{font-size:18px}
+#view-arg .arow .ar-o .res{font-size:21px}
+#view-arg .arow .ar-w{font-size:15px}
+#view-arg .note{font-size:16px}
+#view-arg .stb th{font-size:13px}
+#view-arg .stb td.g{font-size:14px}
 .messi-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin:6px 0}
-.messi-card-h{font-family:'Barlow Condensed';font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
-.messi-card-v{font-family:'Bebas Neue';font-size:30px;color:#fff;line-height:1}
-.messi-card-sub{font-family:'Barlow Condensed';font-size:12.5px;color:var(--muted);margin-top:3px}
+.messi-card-h{font-family:'Barlow Condensed';font-size:15px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.messi-card-v{font-family:'Bebas Neue';font-size:34px;color:#fff;line-height:1}
+.messi-card-sub{font-family:'Barlow Condensed';font-size:15px;color:var(--muted);margin-top:3px}
 .messi-bar{height:5px;border-radius:3px;background:rgba(255,184,0,.15);margin:6px 0 3px;overflow:hidden}
 .messi-bar-fill{height:100%;border-radius:3px;background:var(--gold)}
 .slider-wrap.nb{border-top:none;padding-top:6px}
@@ -757,7 +759,7 @@ function renderArg(){
   let html=`<div class="arg-status">&#127462;&#127479; ${stat}</div>`;
   html+='<div class="sec-h">Fase de grupos</div>';
   DATA.groupMatches.filter(m=>m.home===ARG||m.away===ARG).forEach(m=>{const opp=m.home===ARG?m.away:m.home;const r=STATE.results[m.id];const sc=hasResult(m.id)?(m.home===ARG?r.h+'-'+r.a:r.a+'-'+r.h):'vs';const w=whenHtml(m.kickoff);
-    html+=`<div class="arow"><div class="ar-r">Gr.J</div><div class="ar-o"><b>Argentina</b> <span class="res">${sc}</span> ${opp}<br><span style="color:var(--muted);font-size:12px">&#128205; ${m.venue}</span></div><div class="ar-w">${w.d}<br>${w.t}</div></div>`;});
+    html+=`<div class="arow"><div class="ar-r">Gr.J</div><div class="ar-o"><b>Argentina</b> <span class="res">${sc}</span> ${opp}<br><span style="color:var(--muted);font-size:14px">&#128205; ${m.venue}</span></div><div class="ar-w">${w.d}<br>${w.t}</div></div>`;});
   /* ── Estadísticas exclusivas de Argentina ── */
   {const argGM=DATA.groupMatches.filter(m=>(m.home===ARG||m.away===ARG)&&hasRealResult(m.id)&&status(m.kickoff)!=='pre');
   const argKOM=DATA.koMatches.filter(m=>{if(!hasRealResult(m.id)||status(m.kickoff)==='pre')return false;const h=resolveKoTeam(m,'home').team,a=resolveKoTeam(m,'away').team;return h===ARG||a===ARG;});
@@ -772,10 +774,10 @@ function renderArg(){
     html+=`<tr><td>${tpj}</td><td style="color:var(--green);font-weight:700">${tw}</td><td>${td}</td><td style="color:var(--red)">${tl}</td><td style="color:var(--gold);font-weight:700">${tpts}</td><td style="color:var(--gold);font-weight:700">${tgf}</td><td>${tgc}</td><td style="${tdg>0?'color:var(--green)':tdg<0?'color:var(--red)':''}">${tdg>0?'+':''}${tdg}</td><td>${acs+kcs===0?'—':acs+kcs+' invicta'+(acs+kcs!==1?'s':'')}</td></tr>`;
     html+=`</tbody></table>`;
     if(argKOM.length>0){
-      html+=`<div style="font-family:'Barlow Condensed';font-size:12px;color:var(--muted);margin-bottom:4px">Grupos: ${argGM.length} PJ &bull; ${agf} GF &bull; ${agc} GC &nbsp;|&nbsp; Fase Final: ${argKOM.length} PJ &bull; ${kgf} GF &bull; ${kgc} GC</div>`;
+      html+=`<div style="font-family:'Barlow Condensed';font-size:14px;color:var(--muted);margin-bottom:4px">Grupos: ${argGM.length} PJ &bull; ${agf} GF &bull; ${agc} GC &nbsp;|&nbsp; Fase Final: ${argKOM.length} PJ &bull; ${kgf} GF &bull; ${kgc} GC</div>`;
     }
     const avgGf=(tgf/tpj).toFixed(1),avgGc=(tgc/tpj).toFixed(1);
-    html+=`<div style="display:flex;gap:12px;font-family:'Barlow Condensed';font-size:14px;flex-wrap:wrap">`;
+    html+=`<div style="display:flex;gap:12px;font-family:'Barlow Condensed';font-size:16px;flex-wrap:wrap">`;
     html+=`<span>Promedio: <b style="color:var(--gold)">${avgGf}</b> GF &middot; <b>${avgGc}</b> GC por partido</span>`;
     if(acs+kcs>0)html+=`<span>&#129354; Portería invicta: <b style="color:var(--green)">${acs+kcs} vez${acs+kcs!==1?'es':''}</b></span>`;
     html+=`</div>`;}
@@ -797,18 +799,18 @@ function renderArg(){
   else if(totalG===kloseRec)gStatus=`<span style="color:var(--gold);font-weight:700">&#9889; &iexcl;Igual&oacute; el r&eacute;cord de Klose!</span>`;
   else gStatus=`<span>${kloseRec-totalG} gol${kloseRec-totalG!==1?'es':''} para igualar el r&eacute;cord &bull; Klose 16 (Alemania, 2002&ndash;2014)</span>`;
   const wcStatus='<span>Su 6&ordm; Mundial a los 39 a&ntilde;os &mdash; uno de los grupos m&aacute;s exclusivos del f&uacute;tbol</span>';
-  const espnOk='<span style="color:var(--green);font-size:11px;font-family:\'Barlow Condensed\';font-weight:600"> &bull; ESPN &#9989;</span>';
-  const espnWait='<span style="color:var(--muted);font-size:11px;font-family:\'Barlow Condensed\'"> &bull; cargando...</span>';
-  const g2026tag=mg!==null&&mg>0?' <span style="font-family:\'Barlow Condensed\';font-size:15px;color:var(--green)">(+'+mg+' en 2026)</span>':(mg===null?'<span style="font-family:\'Barlow Condensed\';font-size:14px;color:var(--muted)"> +?</span>':'');
-  const a2026tag=ma!==null&&ma>0?' <span style="font-family:\'Barlow Condensed\';font-size:15px;color:var(--green)">(+'+ma+' en 2026)</span>':'';
-  const m26tag=m26m>0?' <span style="font-family:\'Barlow Condensed\';font-size:15px;color:var(--green)">(+'+m26m+' en 2026)</span>':'';
+  const espnOk='<span style="color:var(--green);font-size:13px;font-family:\'Barlow Condensed\';font-weight:600"> &bull; ESPN &#9989;</span>';
+  const espnWait='<span style="color:var(--muted);font-size:13px;font-family:\'Barlow Condensed\'"> &bull; cargando...</span>';
+  const g2026tag=mg!==null&&mg>0?' <span style="font-family:\'Barlow Condensed\';font-size:17px;color:var(--green)">(+'+mg+' en 2026)</span>':(mg===null?'<span style="font-family:\'Barlow Condensed\';font-size:16px;color:var(--muted)"> +?</span>':'');
+  const a2026tag=ma!==null&&ma>0?' <span style="font-family:\'Barlow Condensed\';font-size:17px;color:var(--green)">(+'+ma+' en 2026)</span>':'';
+  const m26tag=m26m>0?' <span style="font-family:\'Barlow Condensed\';font-size:17px;color:var(--green)">(+'+m26m+' en 2026)</span>':'';
   html+='<div class="sec-h">Messi en el Mundial 2026</div>';
-  const runner='font-family:\'Barlow Condensed\';font-size:12px;color:rgba(96,136,170,.7);margin-top:4px';
-  html+=`<div class="messi-card"><div class="messi-card-h">&#9917; Goles en Mundiales (carrera)${mg!==null?espnOk:espnWait}</div><div class="messi-card-v">${totalG}${g2026tag}</div><div class="messi-bar"><div class="messi-bar-fill" style="width:${gPct}%"></div></div><div style="font-family:'Barlow Condensed';font-size:12.5px;color:var(--muted);margin-top:2px">de 16 &mdash; r&eacute;cord Klose</div><div class="messi-card-sub">${gStatus}</div><div style="${runner}">2&ordm; Ronaldo (Brasil) &mdash; 15 &nbsp;&bull;&nbsp; 3&ordm; G. M&uuml;ller (Alemania) &mdash; 14</div></div>`;
+  const runner='font-family:\'Barlow Condensed\';font-size:14px;color:rgba(96,136,170,.7);margin-top:4px';
+  html+=`<div class="messi-card"><div class="messi-card-h">&#9917; Goles en Mundiales (carrera)${mg!==null?espnOk:espnWait}</div><div class="messi-card-v">${totalG}${g2026tag}</div><div class="messi-bar"><div class="messi-bar-fill" style="width:${gPct}%"></div></div><div style="font-family:'Barlow Condensed';font-size:15px;color:var(--muted);margin-top:2px">de 16 &mdash; r&eacute;cord Klose</div><div class="messi-card-sub">${gStatus}</div><div style="${runner}">2&ordm; Ronaldo (Brasil) &mdash; 15 &nbsp;&bull;&nbsp; 3&ordm; G. M&uuml;ller (Alemania) &mdash; 14</div></div>`;
   html+=`<div class="messi-card"><div class="messi-card-h">&#127919; Asistencias en Mundiales (carrera, aprox.)${ma!==null?espnOk:espnWait}</div><div class="messi-card-v">${totalA}${a2026tag}</div><div class="messi-card-sub" style="color:var(--gold)">L&iacute;der hist&oacute;rico &mdash; cada asistencia extiende la marca</div><div style="${runner}">2&ordm; Ronaldo (Brasil) ~6 (aprox.) &nbsp;&bull;&nbsp; estad&iacute;sticas hist&oacute;ricas no publicadas oficialmente</div></div>`;
   html+=`<div class="messi-card"><div class="messi-card-h">&#128095; Partidos en Mundiales (carrera)</div><div class="messi-card-v">${totalM}${m26tag}</div><div class="messi-card-sub" style="color:var(--gold)">R&eacute;cord vigente desde Qatar 2022 &mdash; cada partido lo extiende</div><div style="${runner}">2&ordm; Matth&auml;us (Alemania) &mdash; 25 &nbsp;&bull;&nbsp; 3&ordm; Carbajal (M&eacute;xico) &mdash; 19</div></div>`;
-  html+=`<div class="messi-card"><div class="messi-card-h">&#127942; Mundiales disputados</div><div style="display:flex;align-items:baseline;gap:8px"><div class="messi-card-v">6&#186;</div><div style="font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">2006 &middot; 2010 &middot; 2014 &middot; 2018 &middot; 2022 &middot; 2026</div></div><div class="messi-card-sub">${wcStatus}</div><div style="${runner}">Otros con 6 Mundiales en 2026: Cristiano Ronaldo (Portugal) &middot; Guillermo Ochoa (M&eacute;xico)</div></div>`;
-  html+=`<div style="font-family:'Barlow Condensed';font-size:11.5px;color:rgba(96,136,170,.55);margin:4px 0 6px 2px">Hist&oacute;rico pre-2026: FIFA &bull; datos 2026: ESPN (auto) &bull; asistencias hist&oacute;ricas aprox. &bull; estimaci&oacute;n propia</div>`;}
+  html+=`<div class="messi-card"><div class="messi-card-h">&#127942; Mundiales disputados</div><div style="display:flex;align-items:baseline;gap:8px"><div class="messi-card-v">6&#186;</div><div style="font-family:'Barlow Condensed';font-size:15px;color:var(--muted)">2006 &middot; 2010 &middot; 2014 &middot; 2018 &middot; 2022 &middot; 2026</div></div><div class="messi-card-sub">${wcStatus}</div><div style="${runner}">Otros con 6 Mundiales en 2026: Cristiano Ronaldo (Portugal) &middot; Guillermo Ochoa (M&eacute;xico)</div></div>`;
+  html+=`<div style="font-family:'Barlow Condensed';font-size:13px;color:rgba(96,136,170,.55);margin:4px 0 6px 2px">Hist&oacute;rico pre-2026: FIFA &bull; datos 2026: ESPN (auto) &bull; asistencias hist&oacute;ricas aprox. &bull; estimaci&oacute;n propia</div>`;}
   html+='<div class="sec-h">Camino seg&uacute;n la simulaci&oacute;n</div>';
   if(!jDone)html+='<div class="note">Cargá o simulá los partidos del Grupo J (o todo el Mundial) para ver el camino real de Argentina.</div>';
   else if(argPos>=4||(argPos===3&&!qualThird))html+='<div class="note arg-elim">En esta simulación Argentina quedó eliminada en la fase de grupos.</div>';
