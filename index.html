@@ -796,7 +796,7 @@ async function refreshBettingOdds(){
 function renderStats(){
   const cont=document.getElementById('view-stats');if(!cont)return;
   /* Solo resultados reales de partidos ya jugados (hasRealResult descarta simulaciones; status!=='pre' descarta pronósticos manuales de partidos futuros) */
-  const ts={};const ti=t=>{if(!ts[t])ts[t]={gf:0,gc:0,w:0,d:0,l:0,pj:0};};
+  const ts={};const ti=t=>{if(!ts[t])ts[t]={gf:0,gc:0,w:0,d:0,l:0,pj:0,pts:0};};
   let totalG=0,totalM=0,cs=0,locW=0,emp=0,visW=0,maxG=-1,maxMStr='';
   DATA.groupMatches.forEach(m=>{
     if(!hasRealResult(m.id)||status(m.kickoff)==='pre')return;
@@ -804,12 +804,12 @@ function renderStats(){
     ti(m.home);ti(m.away);
     ts[m.home].gf+=hg;ts[m.home].gc+=ag;ts[m.home].pj++;
     ts[m.away].gf+=ag;ts[m.away].gc+=hg;ts[m.away].pj++;
-    if(hg>ag){ts[m.home].w++;ts[m.away].l++;}else if(hg<ag){ts[m.away].w++;ts[m.home].l++;}else{ts[m.home].d++;ts[m.away].d++;}
+    if(hg>ag){ts[m.home].w++;ts[m.away].l++;ts[m.home].pts+=3;}else if(hg<ag){ts[m.away].w++;ts[m.home].l++;ts[m.away].pts+=3;}else{ts[m.home].d++;ts[m.away].d++;ts[m.home].pts++;ts[m.away].pts++;}
     totalG+=hg+ag;totalM++;
     if(hg===0)cs++;if(ag===0)cs++;
     if(hg>ag)locW++;else if(hg===ag)emp++;else visW++;
     if(hg+ag>maxG){maxG=hg+ag;maxMStr=`${m.home} ${hg}–${ag} ${m.away}`;}});
-  const teams=Object.entries(ts).filter(([,v])=>v.pj>0).sort((a,b)=>b[1].gf-a[1].gf||(b[1].gf-b[1].gc)-(a[1].gf-a[1].gc)||b[1].w-a[1].w);
+  const teams=Object.entries(ts).filter(([,v])=>v.pj>0).sort((a,b)=>b[1].pts-a[1].pts||b[1].gf-a[1].gf||(b[1].gf-b[1].gc)-(a[1].gf-a[1].gc)||b[1].w-a[1].w);
   /* KO stats (solo resultados reales jugados) */
   let koM=0,koG=0,koPens=0;
   DATA.koMatches.forEach(m=>{
@@ -845,9 +845,9 @@ function renderStats(){
          `<span>&#128499; Visitante: <b>${visW}</b></span></div>`+
          (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">M&aacute;s goles: ${maxMStr} (${maxG})</div>`:'')+
          '</div>';
-      h+=`<div class="stat-s"><div class="stat-h">Goles por equipo — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
-      teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
-        h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
+      h+=`<div class="stat-s"><div class="stat-h">Clasificaci&oacute;n — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th style="color:var(--gold)">Pts</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
+      teams.forEach(([t,v],i)=>{const dg=v.gf-v.gc;const isArg=t===ARG;
+        h+=`<tr><td class="l g">${i+1}</td><td class="l ${isArg?'arg':''}">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.pts}</td><td>${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
       h+='</tbody></table></div>';}
     if(koM>0){
       const avgKo=(koG/koM).toFixed(1);
