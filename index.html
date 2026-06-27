@@ -576,7 +576,8 @@ function mkInput(m,side){const r=STATE.results[m.id]||{};const inp=document.crea
 function matchRow(m){
   const w=whenHtml(m.kickoff),st=status(m.kickoff),isArg=(m.home===ARG||m.away===ARG),isDone=hasRealResult(m.id);
   const row=el(`<div class="match ${isArg?'arg':''} ${isDone?'done':''}"></div>`);
-  row.appendChild(el(`<div class="m-when ${st==='live'?'live':''}"><div class="d">${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d}</div>${st==='live'?'':w.t}</div>`));
+  const lk=_live[m.id];
+  row.appendChild(el(`<div class="m-when ${st==='live'?'live':''}"><div class="d">${st==='live'?'<span class="live-dot"></span>'+(lk||'EN VIVO'):w.d}</div>${st==='live'?'':w.t}</div>`));
   const teams=el(`<div class="m-teams"></div>`);
   const r=STATE.results[m.id];const hv=hasResult(m.id)?+r.h:null,av=hasResult(m.id)?+r.a:null;
   const hwin=hv!=null&&hv>av,awin=av!=null&&av>hv;
@@ -616,7 +617,8 @@ function renderKoList(){
     cont.appendChild(el(`<div class="ko-round"><h2>${name}</h2><span class="dates">${dates}</span></div>`));
     DATA.koMatches.filter(m=>m.round===code).forEach(m=>{
       const w=whenHtml(m.kickoff),st=status(m.kickoff);const card=el(`<div class="ko ${code==='F'?'final':''}"></div>`);
-      card.appendChild(el(`<div class="ko-meta"><span class="no">${code==='F'?'FINAL':'Partido '+m.no}</span><span>${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d+' &middot; '+w.t}</span></div>`));
+      const lk=_live[m.id];
+      card.appendChild(el(`<div class="ko-meta"><span class="no">${code==='F'?'FINAL':'Partido '+m.no}</span><span>${st==='live'?'<span class="live-dot"></span>'+(lk||'EN VIVO'):w.d+' &middot; '+w.t}</span></div>`));
       card.appendChild(koTeamRow(m,'home'));card.appendChild(koTeamRow(m,'away'));
       const r=koResult(m.no),hh=resolveKoTeam(m,'home').team,aa=resolveKoTeam(m,'away').team;
       if(r&&r.h===r.a&&hh&&aa){
@@ -709,9 +711,10 @@ function renderHoy(){
   }else{
     gm.forEach(m=>{card.appendChild(matchRow(m));card.appendChild(el(`<div class="m-venue">Grupo ${m.group} &middot; ${m.venue}${oddsHtml(m.home,m.away,m.id)}</div>`));});
     km.forEach(m=>{const w=whenHtml(m.kickoff),st=status(m.kickoff);const hi=resolveKoTeam(m,'home'),ai=resolveKoTeam(m,'away');const r=koResult(m.no);
-      const row=el(`<div class="arow" style="cursor:pointer"><div class="ar-r">${m.no===104?'Final':roundShort(m.round)}</div><div class="ar-o">${hi.team||hi.label} ${r?`<span class="res">${r.h}-${r.a}</span>`:'vs'} ${ai.team||ai.label}<br><span style="color:var(--muted);font-size:12px">&#128205; ${m.venue}</span>${koOddsHtml(hi.team,ai.team,hasRealResult(m.id))}</div><div class="ar-w">${st==='live'?'<span class="live-dot"></span>EN VIVO':w.d+'<br>'+w.t}</div></div>`);
+      const lk=_live[m.id];
+      const row=el(`<div class="arow" style="cursor:pointer"><div class="ar-r">${m.no===104?'Final':roundShort(m.round)}</div><div class="ar-o">${hi.team||hi.label} ${r?`<span class="res">${r.h}-${r.a}</span>`:'vs'} ${ai.team||ai.label}<br><span style="color:var(--muted);font-size:12px">&#128205; ${m.venue}</span>${koOddsHtml(hi.team,ai.team,hasRealResult(m.id))}</div><div class="ar-w">${st==='live'?'<span class="live-dot"></span>'+(lk||'EN VIVO'):w.d+'<br>'+w.t}</div></div>`);
       row.onclick=()=>openMatch(m.no);card.appendChild(row);});
-    if(hoyOffset===0)card.appendChild(el(`<div class="note">Horarios en hora argentina. Toc&aacute; <b>&#8635; Actualizar</b> (arriba) para traer los resultados, o cargalos a mano.</div>`));
+    if(hoyOffset===0){const liveNow=DATA.groupMatches.concat(DATA.koMatches).some(m=>dayKey(m.kickoff)===target&&status(m.kickoff)==='live');card.appendChild(el(`<div class="note">${liveNow?'&#128308; Actualizaci&oacute;n autom&aacute;tica cada 60&nbsp;s. ':''}Horarios en hora argentina. Toc&aacute; <b>&#8635; Actualizar</b> para traer resultados, o cargalos a mano.</div>`));}
   }
   cont.appendChild(card);}
 
@@ -1070,6 +1073,41 @@ function applyEvents(evts){let updated=0;const usados=new Set();
     const prev=STATE.results[b.m.id];if(prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa)return;
     STATE.results[b.m.id]={h:hh,a:aa,src:'api'};updated++;}); /* si empata, penales/avanza se cargan a mano */
   return updated;}
+
+/* ---------- live score polling (ESPN, client-side, sin backend) ---------- */
+let _liveTimer=null;const _live={};
+function isLiveWindow(){const now=Date.now();return DATA.groupMatches.concat(DATA.koMatches).some(m=>{const t=new Date(m.kickoff).getTime();return now>=t-5*60*1000&&now<=t+3*60*60*1000;});}
+async function pollLiveScores(){
+  if(!isLiveWindow())return;
+  try{
+    const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const r=await fetch(ESPN_BASE+'?dates='+today+'&limit=20');
+    if(!r.ok)return;const j=await r.json();
+    const evts=[];let liveChanged=false;
+    (j.events||[]).forEach(ev=>{
+      const comp=(ev.competitions||[])[0];if(!comp)return;
+      const hc=comp.competitors.find(c=>c.homeAway==='home'),ac=comp.competitors.find(c=>c.homeAway==='away');if(!hc||!ac)return;
+      const st=ev.status||{},state=(st.type||{}).state||'pre',clock=st.displayClock||'';
+      if(state==='pre')return;
+      const hn=hc.team.displayName||hc.team.name,an=ac.team.displayName||ac.team.name;
+      evts.push({home:hn,away:an,time:ev.date,hs:+(hc.score||0),as:+(ac.score||0)});
+      if(state==='in'){const h=toOurs(hn),a=toOurs(an);if(!h||!a)return;
+        const gm=findGroupMatch(h,a,ev.date);
+        if(gm&&_live[gm.id]!==clock){_live[gm.id]=clock;liveChanged=true;}}});
+    const n=applyEvents(evts);
+    /* KO live clocks — después de applyEvents (que llama recompute, resuelve equipos KO) */
+    (j.events||[]).forEach(ev=>{
+      const comp=(ev.competitions||[])[0];if(!comp)return;
+      const state=((ev.status||{}).type||{}).state;if(state!=='in')return;
+      const clock=(ev.status||{}).displayClock||'';
+      const hc=comp.competitors.find(c=>c.homeAway==='home'),ac=comp.competitors.find(c=>c.homeAway==='away');if(!hc||!ac)return;
+      const h=toOurs(hc.team.displayName||hc.team.name),a=toOurs(ac.team.displayName||ac.team.name);if(!h||!a)return;
+      const km=findKoMatch(h,a,ev.date);
+      if(km&&_live[km.m.id]!==clock){_live[km.m.id]=clock;liveChanged=true;}});
+    if(n>0||liveChanged)rerender();
+  }catch(e){}}
+function startLivePolling(){if(_liveTimer)return;_liveTimer=setInterval(pollLiveScores,60*1000);pollLiveScores();}
+
 async function updateResults(){
   const btn=document.getElementById('btnUpd');btn.disabled=true;btn.textContent='Buscando...';const note=document.getElementById('updNote');
   const ed=d=>d.toISOString().slice(0,10).replace(/-/g,'');const now=Date.now();
@@ -1128,7 +1166,7 @@ function setMode(m){viewMode=m;const btn=document.getElementById('btnMode');if(!
   setMode(viewMode);})();
 
 /* ---------- boot ---------- */
-renderChips();rerender();
+renderChips();rerender();startLivePolling();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
 </body>
