@@ -643,7 +643,7 @@ function renderKoList(){
           const bh=el(`<button class="advbtn ${STATE.adv[m.id]==='home'?'on':''}">${hh}</button>`);const ba=el(`<button class="advbtn ${STATE.adv[m.id]==='away'?'on':''}">${aa}</button>`);
           bh.onclick=()=>{STATE.adv[m.id]='home';persist();rerender();};ba.onclick=()=>{STATE.adv[m.id]='away';persist();rerender();};
           sel.appendChild(bh);sel.appendChild(ba);card.appendChild(sel);}}
-      card.appendChild(el(`<div class="ko-venue">&#128205; ${m.venue}</div>`));cont.appendChild(card);});});
+      card.appendChild(el(`<div class="ko-venue">&#128205; ${m.venue}${koOddsHtml(hh,aa,hasRealResult(m.id))}</div>`));cont.appendChild(card);});});
 }
 
 /* ---------- KO graphic (bracket tree) ---------- */
