@@ -792,11 +792,11 @@ async function refreshBettingOdds(){
   _bettingOddsLoading=false;renderStats();}
 function renderStats(){
   const cont=document.getElementById('view-stats');if(!cont)return;
-  /* Solo resultados reales (hasRealResult descarta simulaciones) */
+  /* Solo resultados reales de partidos ya jugados (hasRealResult descarta simulaciones; status!=='pre' descarta pronósticos manuales de partidos futuros) */
   const ts={};const ti=t=>{if(!ts[t])ts[t]={gf:0,gc:0,w:0,d:0,l:0,pj:0};};
   let totalG=0,totalM=0,cs=0,locW=0,emp=0,visW=0,maxG=-1,maxMStr='';
   DATA.groupMatches.forEach(m=>{
-    if(!hasRealResult(m.id))return;
+    if(!hasRealResult(m.id)||status(m.kickoff)==='pre')return;
     const r=STATE.results[m.id];const hg=+r.h,ag=+r.a;
     ti(m.home);ti(m.away);
     ts[m.home].gf+=hg;ts[m.home].gc+=ag;ts[m.home].pj++;
@@ -925,7 +925,7 @@ function renderStats(){
 let _statsAt=null,_summaryGoals=null;
 async function buildSummaryGoals(){
   try{
-    const done=DATA.groupMatches.filter(m=>hasRealResult(m.id));
+    const done=DATA.groupMatches.filter(m=>hasRealResult(m.id)&&status(m.kickoff)!=='pre');
     if(!done.length)return{};
     const dates=[...new Set(done.map(m=>m.kickoff.slice(0,10).replace(/-/g,'')))];
     const boards=await Promise.all(dates.map(d=>
