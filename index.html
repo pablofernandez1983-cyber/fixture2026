@@ -180,11 +180,6 @@ table.stand{width:100%;border-collapse:collapse;font-family:'Barlow Condensed',s
 .messi-card-sub{font-family:'Barlow Condensed';font-size:12.5px;color:var(--muted);margin-top:3px}
 .messi-bar{height:5px;border-radius:3px;background:rgba(255,184,0,.15);margin:6px 0 3px;overflow:hidden}
 .messi-bar-fill{height:100%;border-radius:3px;background:var(--gold)}
-.m-ctrl{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px}
-.m-ctrl-item{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:6px 10px;flex:1;min-width:140px}
-.m-ctrl-item .m-lbl{font-family:'Barlow Condensed';font-size:13.5px;color:var(--muted);flex:1}
-.m-ctrl-item .m-val{font-family:'Bebas Neue';font-size:22px;min-width:24px;text-align:center}
-.m-ctrl-item button{background:var(--surface2);border:1px solid var(--border);color:#fff;width:28px;height:28px;border-radius:7px;font-size:17px;cursor:pointer;font-weight:700;line-height:1}
 .slider-wrap.nb{border-top:none;padding-top:6px}
 .adv-h{font-family:'Bebas Neue';font-size:16px;color:#fff;letter-spacing:1px;border-top:1px solid var(--border);padding-top:12px;margin-top:6px}
 .cfg-link{font-family:'Barlow Condensed';font-weight:700;font-size:14px;color:var(--blue);text-align:center;padding:12px 4px 2px;cursor:pointer}
@@ -445,10 +440,9 @@ function genPens(){let loser=2+Math.floor(Math.random()*3);let winner=Math.min(6
 const STORE_KEY='fixture2026_v2';let mem={};
 function loadStore(){try{const s=localStorage.getItem(STORE_KEY);return s?JSON.parse(s):{};}catch(e){return mem;}}
 function saveStore(o){mem=o;try{localStorage.setItem(STORE_KEY,JSON.stringify(o));}catch(e){}}
-let STATE=loadStore();STATE.results=STATE.results||{};STATE.adv=STATE.adv||{};STATE.pens=STATE.pens||{};STATE.sim=STATE.sim||{};STATE.messi=STATE.messi||{g:0,a:0};
+let STATE=loadStore();STATE.results=STATE.results||{};STATE.adv=STATE.adv||{};STATE.pens=STATE.pens||{};STATE.sim=STATE.sim||{};
 function getSim(){STATE.sim=STATE.sim||{};const s=STATE.sim;if(s.det==null)s.det=false;if(s.K==null)s.K=4.4;if(s.wHist==null)s.wHist=30;if(s.wFifa==null)s.wFifa=40;if(s.wOdds==null)s.wOdds=30;if(s.base==null)s.base=1.28;return s;}
 function persist(){saveStore(STATE);}
-function messiAdj(k,d){STATE.messi[k]=Math.max(0,(STATE.messi[k]||0)+d);persist();rerender();}
 
 /* ---------- dates ---------- */
 const fmtD=new Intl.DateTimeFormat('es-AR',{timeZone:TZ,weekday:'short',day:'2-digit',month:'short'});
@@ -787,25 +781,33 @@ function renderArg(){
     html+=`</div>`;}
   }
   /* ── Messi: récords a su alcance ── */
-  {const mg=STATE.messi.g||0,ma=STATE.messi.a||0;
-  const m26gm=DATA.groupMatches.filter(m=>(m.home===ARG||m.away===ARG)&&hasRealResult(m.id)&&status(m.kickoff)!=='pre').length;
+  {const m26gm=DATA.groupMatches.filter(m=>(m.home===ARG||m.away===ARG)&&hasRealResult(m.id)&&status(m.kickoff)!=='pre').length;
   const m26km=DATA.koMatches.filter(m=>{if(!hasRealResult(m.id)||status(m.kickoff)==='pre')return false;const h=resolveKoTeam(m,'home').team,a=resolveKoTeam(m,'away').team;return h===ARG||a===ARG;}).length;
   const m26m=m26gm+m26km;
-  const totalG=13+mg,totalA=8+ma,totalM=26+m26m;
+  const mName='Lionel Messi';
+  let mg=null,ma=null;
+  if(_summaryGoals&&Object.keys(_summaryGoals).length>0){mg=_summaryGoals[mName]||0;}
+  else if(_summaryGoals!==null){mg=0;}
+  else if(_stats&&!_stats._failed){const gL=(_stats.leaders||[]).find(l=>/goals/i.test(l.displayName));const mP=(gL&&gL.leaders||[]).find(p=>p.athlete&&p.athlete.displayName===mName);mg=mP?+(mP.value||0):0;}
+  if(_stats&&!_stats._failed){const aL=(_stats.leaders||[]).find(l=>/assist/i.test(l.displayName));const mA=(aL&&aL.leaders||[]).find(p=>p.athlete&&p.athlete.displayName===mName);ma=mA?+(mA.value||0):0;}
+  const totalG=13+(mg||0),totalA=8+(ma||0),totalM=26+m26m;
   const kloseRec=16,gPct=Math.min(100,Math.round(totalG/kloseRec*100));
   let gStatus;
   if(totalG>kloseRec)gStatus=`<span style="color:var(--green);font-weight:700">&#127942; &iexcl;R&eacute;cord hist&oacute;rico superado!</span>`;
   else if(totalG===kloseRec)gStatus=`<span style="color:var(--gold);font-weight:700">&#9889; &iexcl;Igual&oacute; el r&eacute;cord de Klose!</span>`;
   else gStatus=`<span>${kloseRec-totalG} gol${kloseRec-totalG!==1?'es':''} para igualar el r&eacute;cord &bull; Klose 16 (Alemania, 2002&ndash;2014)</span>`;
-  const wcStatus=m26m>0?`<span style="color:var(--gold);font-weight:700">&#9889; Primer jugador en la historia en disputar 6 Mundiales</span>`:`<span>Si juega, ser&aacute; el primero en la historia en disputar 6 Mundiales</span>`;
+  const wcStatus=m26m>0?'<span style="color:var(--gold);font-weight:700">&#9889; Primer jugador en la historia en disputar 6 Mundiales</span>':'<span>Si juega, ser&aacute; el primero en la historia en disputar 6 Mundiales</span>';
+  const espnOk='<span style="color:var(--green);font-size:11px;font-family:\'Barlow Condensed\';font-weight:600"> &bull; ESPN &#9989;</span>';
+  const espnWait='<span style="color:var(--muted);font-size:11px;font-family:\'Barlow Condensed\'"> &bull; cargando...</span>';
+  const g2026tag=mg!==null&&mg>0?' <span style="font-family:\'Barlow Condensed\';font-size:15px;color:var(--green)">(+'+mg+' en 2026)</span>':(mg===null?'<span style="font-family:\'Barlow Condensed\';font-size:14px;color:var(--muted)"> +?</span>':'');
+  const a2026tag=ma!==null&&ma>0?' <span style="font-family:\'Barlow Condensed\';font-size:15px;color:var(--green)">(+'+ma+' en 2026)</span>':'';
+  const m26tag=m26m>0?' <span style="font-family:\'Barlow Condensed\';font-size:15px;color:var(--green)">(+'+m26m+' en 2026)</span>':'';
   html+='<div class="sec-h">Messi en el Mundial 2026</div>';
-  html+=`<div style="font-family:'Barlow Condensed';font-size:13.5px;color:var(--muted);margin:-4px 0 8px 2px">Actualizá sus goles y asistencias en este torneo:</div>`;
-  html+=`<div class="m-ctrl"><div class="m-ctrl-item"><span class="m-lbl">&#9917; Goles 2026</span><button onclick="messiAdj('g',-1)">&#8722;</button><span class="m-val">${mg}</span><button onclick="messiAdj('g',1)">+</button></div><div class="m-ctrl-item"><span class="m-lbl">&#127919; Asistencias 2026</span><button onclick="messiAdj('a',-1)">&#8722;</button><span class="m-val">${ma}</span><button onclick="messiAdj('a',1)">+</button></div></div>`;
-  html+=`<div class="messi-card"><div class="messi-card-h">&#9917; Goles en Mundiales (carrera)</div><div style="display:flex;align-items:baseline;gap:8px"><div class="messi-card-v">${totalG}</div><div style="font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">de 16 &mdash; r&eacute;cord Klose</div></div><div class="messi-bar"><div class="messi-bar-fill" style="width:${gPct}%"></div></div><div class="messi-card-sub">${gStatus}</div></div>`;
-  html+=`<div class="messi-card"><div class="messi-card-h">&#127919; Asistencias en Mundiales (carrera, aprox.)</div><div style="display:flex;align-items:baseline;gap:8px"><div class="messi-card-v">${totalA}</div><div style="font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">asistencias totales</div></div><div class="messi-card-sub" style="color:var(--gold)">L&iacute;der hist&oacute;rico &mdash; cada asistencia extiende la marca</div></div>`;
-  html+=`<div class="messi-card"><div class="messi-card-h">&#128095; Partidos en Mundiales (carrera)</div><div style="display:flex;align-items:baseline;gap:8px"><div class="messi-card-v">${totalM}</div><div style="font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">partidos totales</div></div><div class="messi-card-sub" style="color:var(--gold)">R&eacute;cord vigente desde Qatar 2022 (super&oacute; a Matth&auml;us, 25) &mdash; cada partido lo extiende</div></div>`;
+  html+=`<div class="messi-card"><div class="messi-card-h">&#9917; Goles en Mundiales (carrera)${mg!==null?espnOk:espnWait}</div><div class="messi-card-v">${totalG}${g2026tag}</div><div class="messi-bar"><div class="messi-bar-fill" style="width:${gPct}%"></div></div><div style="font-family:'Barlow Condensed';font-size:12.5px;color:var(--muted);margin-top:2px">de 16 &mdash; r&eacute;cord Klose</div><div class="messi-card-sub">${gStatus}</div></div>`;
+  html+=`<div class="messi-card"><div class="messi-card-h">&#127919; Asistencias en Mundiales (carrera, aprox.)${ma!==null?espnOk:espnWait}</div><div class="messi-card-v">${totalA}${a2026tag}</div><div class="messi-card-sub" style="color:var(--gold)">L&iacute;der hist&oacute;rico &mdash; cada asistencia extiende la marca</div></div>`;
+  html+=`<div class="messi-card"><div class="messi-card-h">&#128095; Partidos en Mundiales (carrera)</div><div class="messi-card-v">${totalM}${m26tag}</div><div class="messi-card-sub" style="color:var(--gold)">R&eacute;cord vigente desde Qatar 2022 (super&oacute; a Matth&auml;us, 25) &mdash; cada partido lo extiende</div></div>`;
   html+=`<div class="messi-card"><div class="messi-card-h">&#127942; Mundiales disputados</div><div style="display:flex;align-items:baseline;gap:8px"><div class="messi-card-v">6&#186;</div><div style="font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">2006 &middot; 2010 &middot; 2014 &middot; 2018 &middot; 2022 &middot; 2026</div></div><div class="messi-card-sub">${wcStatus}</div></div>`;
-  html+=`<div style="font-family:'Barlow Condensed';font-size:11.5px;color:rgba(96,136,170,.55);margin:4px 0 6px 2px">Hist&oacute;rico al cierre de Qatar 2022 &bull; asistencias aprox. seg&uacute;n registros disponibles &bull; estimaci&oacute;n propia</div>`;}
+  html+=`<div style="font-family:'Barlow Condensed';font-size:11.5px;color:rgba(96,136,170,.55);margin:4px 0 6px 2px">Hist&oacute;rico pre-2026: FIFA &bull; datos 2026: ESPN (auto) &bull; asistencias hist&oacute;ricas aprox. &bull; estimaci&oacute;n propia</div>`;}
   html+='<div class="sec-h">Camino seg&uacute;n la simulaci&oacute;n</div>';
   if(!jDone)html+='<div class="note">Cargá o simulá los partidos del Grupo J (o todo el Mundial) para ver el camino real de Argentina.</div>';
   else if(argPos>=4||(argPos===3&&!qualThird))html+='<div class="note arg-elim">En esta simulación Argentina quedó eliminada en la fase de grupos.</div>';
@@ -1052,16 +1054,16 @@ async function loadStats(){
   toast('Cargando estadísticas...');
   // Corre en background — actualiza la tabla histórica cuando termina (puede tardar 10-20s)
   buildSummaryGoals().then(sg=>{
-    if(sg&&Object.keys(sg).length>0){_summaryGoals=sg;renderStats();toast('✅ Goles 2026 actualizados (en vivo)');}}
+    if(sg&&Object.keys(sg).length>0){_summaryGoals=sg;renderStats();renderArg();toast('✅ Goles 2026 actualizados (en vivo)');}}
   ).catch(()=>{});
   // ESPN aggregate: rápido, actualiza goleadores individuales + asistencias
   for(const url of URLS){
     try{const r=await fetch(url);if(!r.ok)continue;const j=await r.json();
       const src=j.stats||j.leaders||j.statistics;
       if(src&&Array.isArray(src)&&src.length>0&&src.some(s=>s.leaders&&s.leaders.length>0)){
-        _stats={leaders:src};_statsAt=new Date();renderStats();toast('✅ Estadísticas actualizadas');return;}
+        _stats={leaders:src};_statsAt=new Date();renderStats();renderArg();toast('✅ Estadísticas actualizadas');return;}
     }catch(e){continue;}}
-  _stats={_failed:true};_statsAt=new Date();renderStats();
+  _stats={_failed:true};_statsAt=new Date();renderStats();renderArg();
   toast('⚠️ ESPN no devolvió datos de estadísticas individuales');}
 
 /* ---------- chips ---------- */
@@ -1075,7 +1077,8 @@ function renderChips(){const c=document.getElementById('chips');c.innerHTML='';
 const VIEWS=['hoy','grupos','llaves','arg','stats'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   const v=t.dataset.v;VIEWS.forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
-  if(v==='stats'){if(!_stats||!_statsAt||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}});
+  if(v==='stats'){if(!_stats||!_statsAt||Date.now()-_statsAt>5*60000)loadStats();if(!_bettingOdds&&!_bettingOddsLoading)fetchBettingOdds();}
+  if(v==='arg'){if(!_stats||!_statsAt||Date.now()-_statsAt>5*60000)loadStats();}});
 document.querySelectorAll('.kotab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.kotab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   KO_VIEW=t.dataset.k;document.getElementById('bracket-graph').classList.toggle('hidden',KO_VIEW!=='graph');document.getElementById('bracket-list').classList.toggle('hidden',KO_VIEW!=='list');renderKoStatus();});
 
