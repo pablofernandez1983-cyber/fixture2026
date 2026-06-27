@@ -810,25 +810,54 @@ function renderStats(){
     if(hg>ag)locW++;else if(hg===ag)emp++;else visW++;
     if(hg+ag>maxG){maxG=hg+ag;maxMStr=`${m.home} ${hg}–${ag} ${m.away}`;}});
   const teams=Object.entries(ts).filter(([,v])=>v.pj>0).sort((a,b)=>b[1].gf-a[1].gf||(b[1].gf-b[1].gc)-(a[1].gf-a[1].gc)||b[1].w-a[1].w);
+  /* KO stats (solo resultados reales jugados) */
+  let koM=0,koG=0,koPens=0;
+  DATA.koMatches.forEach(m=>{
+    if(!hasRealResult(m.id)||status(m.kickoff)==='pre')return;
+    koM++;const r=STATE.results[m.id];const hg=+r.h,ag=+r.a;koG+=hg+ag;
+    if(hg===ag){const p=STATE.pens[m.id];if(p&&p.h!==''&&p.a!==''&&!isNaN(+p.h)&&!isNaN(+p.a)&&+p.h!==+p.a)koPens++;}});
+  const totalPlayed=totalM+koM;
+  const totalAll=DATA.groupMatches.length+DATA.koMatches.length;
+  const pct=totalAll>0?Math.round(totalPlayed/totalAll*100):0;
+  const pctG=Math.round(totalM/DATA.groupMatches.length*100);
   let h='<div class="wrap">';
-  if(totalM===0){h+=`<div class="note">Todavía no hay resultados reales cargados. Usá &#8635; Actualizar para traer los datos.</div>`;}
+  /* ── Avance del Mundial ── */
+  h+=`<div class="stat-s"><div class="stat-h">Avance del Mundial</div>`+
+     `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">`+
+     `<span style="font-family:'Bebas Neue';font-size:30px;color:var(--gold)">${totalPlayed}<span style="font-size:17px;color:var(--muted)">&#8202;/&#8202;${totalAll}</span></span>`+
+     `<span style="font-family:'Barlow Condensed';font-size:14px;color:var(--muted)">partidos jugados &middot; <b style="color:var(--gold)">${pct}%</b></span></div>`+
+     `<div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;margin-bottom:8px"><div style="background:var(--gold);height:100%;width:${pct}%"></div></div>`+
+     `<div style="display:flex;gap:16px;font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">`+
+     `<span>Grupos: <b style="color:${totalM>0?'var(--gold)':'inherit'}">${totalM}/${DATA.groupMatches.length}</b> (${pctG}%)</span>`+
+     `<span>Fase Final: <b style="color:${koM>0?'var(--gold)':'inherit'}">${koM}/${DATA.koMatches.length}</b></span></div></div>`;
+  if(totalM===0&&koM===0){h+=`<div class="note">Todavía no hay resultados reales cargados. Usá &#8635; Actualizar para traer los datos.</div>`;}
   else{
-    const avg=(totalG/totalM).toFixed(1);
-    h+=`<div class="sg"><div class="sc2"><div class="sv">${totalG}</div><div class="sl">Goles totales</div></div>`+
-       `<div class="sc2"><div class="sv">${avg}</div><div class="sl">Goles por partido</div></div>`+
-       `<div class="sc2"><div class="sv">${totalM}</div><div class="sl">Partidos jugados</div></div>`+
-       `<div class="sc2"><div class="sv">${cs}</div><div class="sl">Porterías invictas</div></div></div>`;
-    h+=`<div class="stat-s"><div class="stat-h">Resultados fase de grupos</div>`+
-       `<div style="display:flex;gap:14px;font-family:'Barlow Condensed';font-size:15px;flex-wrap:wrap">`+
-       `<span>&#127968; Local: <b style="color:var(--gold)">${locW}</b></span>`+
-       `<span>X Empate: <b>${emp}</b></span>`+
-       `<span>&#128499; Visitante: <b>${visW}</b></span></div>`+
-       (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">M&aacute;s goles: ${maxMStr} (${maxG})</div>`:'')+
-       '</div>';
-    h+=`<div class="stat-s"><div class="stat-h">Goles por equipo — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
-    teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
-      h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
-    h+='</tbody></table></div>';}
+    if(totalM>0){
+      const avg=(totalG/totalM).toFixed(1);
+      h+=`<div class="sg"><div class="sc2"><div class="sv">${totalG}</div><div class="sl">Goles (grupos)</div></div>`+
+         `<div class="sc2"><div class="sv">${avg}</div><div class="sl">Goles por partido</div></div>`+
+         `<div class="sc2"><div class="sv">${cs}</div><div class="sl">Porterías invictas</div></div>`+
+         `<div class="sc2"><div class="sv">${emp}</div><div class="sl">Empates</div></div></div>`;
+      h+=`<div class="stat-s"><div class="stat-h">Fase de grupos — resultados</div>`+
+         `<div style="display:flex;gap:14px;font-family:'Barlow Condensed';font-size:15px;flex-wrap:wrap">`+
+         `<span>&#127968; Local: <b style="color:var(--gold)">${locW}</b></span>`+
+         `<span>X Empate: <b>${emp}</b></span>`+
+         `<span>&#128499; Visitante: <b>${visW}</b></span></div>`+
+         (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">M&aacute;s goles: ${maxMStr} (${maxG})</div>`:'')+
+         '</div>';
+      h+=`<div class="stat-s"><div class="stat-h">Goles por equipo — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
+      teams.slice(0,16).forEach(([t,v],i)=>{const dg=v.gf-v.gc;
+        h+=`<tr><td class="l g">${i+1}</td><td class="l">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
+      h+='</tbody></table></div>';}
+    if(koM>0){
+      const avgKo=(koG/koM).toFixed(1);
+      h+=`<div class="stat-s"><div class="stat-h">Fase Final — resultados reales</div>`+
+         `<div class="sg"><div class="sc2"><div class="sv">${koG}</div><div class="sl">Goles totales</div></div>`+
+         `<div class="sc2"><div class="sv">${avgKo}</div><div class="sl">Goles por partido</div></div>`+
+         `<div class="sc2"><div class="sv">${koPens}</div><div class="sl">Definidos a penales</div></div>`+
+         `<div class="sc2"><div class="sv">${koM}</div><div class="sl">Partidos jugados</div></div></div></div>`;
+    }
+  }
   /* Tabla de mejores terceros */
   {const allThirds=(_T&&_T.ranking)||[];const thirdsWithGames=allThirds.filter(t=>t.P>0);
   if(thirdsWithGames.length>0){
