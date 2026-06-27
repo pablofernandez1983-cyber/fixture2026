@@ -993,7 +993,7 @@ function simGroups(){DATA.groupMatches.forEach(m=>{if(hasRealResult(m.id))return
 function teamGroup(t){return Object.keys(DATA.groups).find(g=>DATA.groups[g].includes(t));}
 function forceGroupWin(team){const g=teamGroup(team);if(!g)return;DATA.groupMatches.filter(m=>m.group===g&&(m.home===team||m.away===team)).forEach(m=>{if(hasRealResult(m.id))return;STATE.results[m.id]=(m.home===team)?{h:2,a:0,sim:true}:{h:0,a:2,sim:true};delete STATE.pens[m.id];});}
 function simKnockouts(forced){recompute();
-  if(viewMode!=='real'&&!Object.keys(_G).every(g=>_G[g].complete)){simGroups();}
+  if(!Object.keys(_G).every(g=>_G[g].complete)){simGroups();}
   if(forced)forceGroupWin(forced);
   recompute();
   ['R32','R16','QF','SF','3P','F'].forEach(rnd=>{
@@ -1006,7 +1006,7 @@ function simKnockouts(forced){recompute();
       else{delete STATE.adv[m.id];delete STATE.pens[m.id];}});
     recompute();});
   persist();}
-document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;if(viewMode!=='real')simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
+document.getElementById('simAllBtn').onclick=()=>{const champ=getSim().champ||null;simGroups();if(champ)forceGroupWin(champ);recompute();simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Mundial simulado &#127942;');};
 document.getElementById('simKoBtn').onclick=()=>{const champ=getSim().champ||null;simKnockouts(champ);rerender();toast(champ?('Campe&oacute;n forzado: '+champ+' &#127942;'):'Fase Final simulada &#129529;');};
 document.getElementById('resetBtn').onclick=()=>{if(confirm('¿Borrar TODOS los resultados (grupos y Fase Final)?')){STATE.results={};STATE.adv={};STATE.pens={};persist();rerender();toast('Todo borrado');}};
 document.getElementById('resetKoBtn').onclick=()=>{if(confirm('¿Borrar solo los resultados de Fase Final?')){DATA.koMatches.forEach(m=>{delete STATE.results[m.id];delete STATE.adv[m.id];delete STATE.pens[m.id];});persist();rerender();toast('Fase Final borrada');}};
