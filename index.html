@@ -1164,14 +1164,14 @@ function applyEvents(evts){let updated=0;const usados=new Set();
   evts.forEach((ev,i)=>{const h=toOurs(ev.home),a=toOurs(ev.away);if(!h||!a)return;
     const m=findGroupMatch(h,a,ev.time);if(!m)return;usados.add(i);
     let hh=ev.hs,aa=ev.as;if(m.home===a){const t=hh;hh=aa;aa=t;}
-    const prev=STATE.results[m.id];if(prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa)return;
-    STATE.results[m.id]={h:hh,a:aa,src:'api'};updated++;});
+    const prev=STATE.results[m.id];const same=prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa;
+    STATE.results[m.id]={h:hh,a:aa,src:'api'};if(!same)updated++;});
   recompute(); /* con los grupos cargados se resuelven los equipos de la Fase Final */
   evts.forEach((ev,i)=>{if(usados.has(i))return;const h=toOurs(ev.home),a=toOurs(ev.away);if(!h||!a)return;
     const b=findKoMatch(h,a,ev.time);if(!b)return;
     let hh=ev.hs,aa=ev.as;if(b.th===a){const t=hh;hh=aa;aa=t;}
-    const prev=STATE.results[b.m.id];if(prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa)return;
-    STATE.results[b.m.id]={h:hh,a:aa,src:'api'};updated++;}); /* si empata, penales/avanza se cargan a mano */
+    const prev=STATE.results[b.m.id];const same=prev&&prev.src==='api'&&+prev.h===hh&&+prev.a===aa;
+    STATE.results[b.m.id]={h:hh,a:aa,src:'api'};if(!same)updated++;}); /* si empata, penales/avanza se cargan a mano */
   return updated;}
 
 /* ---------- live score polling (ESPN, client-side, sin backend) ---------- */
@@ -1242,6 +1242,7 @@ async function updateResults(){
   if(!evts){note.textContent='No se pudo conectar';toast('&#9888;&#65039; Sin conexi&oacute;n a Supabase ni a la API');return;}
   const updated=applyEvents(evts);
   persist();rerender();
+  pollLiveScores(); /* también levanta partidos en curso */
   if(updated>0){
     note.textContent=updated+' partido(s) actualizado(s)';
     toast('&#9989; '+updated+' resultado(s) actualizados');
