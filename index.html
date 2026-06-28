@@ -1182,11 +1182,15 @@ function isLiveWindow(){const now=Date.now();return DATA.groupMatches.concat(DAT
 function isTournamentActive(){const n=Date.now();return n>=Date.parse('2026-06-11')&&n<Date.parse('2026-07-22');}
 async function pollLiveScores(){
   if(!isTournamentActive())return;
-  let espnJ=null;
-  try{const today=new Date().toISOString().slice(0,10).replace(/-/g,'');const r=await fetch(ESPN_BASE+'?dates='+today+'&limit=20&_t='+Date.now(),{cache:'no-store'});if(r.ok)espnJ=await r.json();}catch(e){console.warn('poll:',e);}
+  /* ESPN indexa partidos nocturnos (02:00 UTC) bajo la fecha ET (día anterior).
+     Fetcheamos hoy y ayer para no perder partidos en vivo según zona horaria ESPN. */
+  const toD=d=>d.toISOString().slice(0,10).replace(/-/g,'');
+  const nowD=new Date(),yestD=new Date(nowD-864e5);
+  const espnAll=[];
+  try{const [j1,j2]=await Promise.all([fetch(ESPN_BASE+'?dates='+toD(nowD)+'&limit=20&_t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null),fetch(ESPN_BASE+'?dates='+toD(yestD)+'&limit=20&_t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]);const seen=new Set();[j1,j2].forEach(j=>{if(j)(j.events||[]).forEach(ev=>{if(!seen.has(ev.id)){seen.add(ev.id);espnAll.push(ev);}});});}catch(e){console.warn('poll:',e);}
   const evts=[];let liveChanged=false;
-  /* ESPN: live clocks + puntajes de hoy */
-  if(espnJ)(espnJ.events||[]).forEach(ev=>{
+  /* ESPN: live clocks + puntajes de hoy/ayer */
+  espnAll.forEach(ev=>{
     const comp=(ev.competitions||[])[0];if(!comp)return;
     const hc=comp.competitors.find(c=>c.homeAway==='home'),ac=comp.competitors.find(c=>c.homeAway==='away');if(!hc||!ac)return;
     const st=ev.status||{},state=(st.type||{}).state||'pre',clock=st.displayClock||'';
