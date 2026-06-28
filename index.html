@@ -1214,7 +1214,7 @@ async function pollLiveScores(){
     const km=findKoMatch(h,a,Date.parse(comp.date||ev.date));
     if(km&&_live[km.m.id]!==clock){_live[km.m.id]=clock;liveChanged=true;}});
   if(n>0)persist();
-  if(n>0||liveChanged||isLiveWindow())rerender();}}
+  if(n>0||liveChanged||isLiveWindow())rerender();}
 function startLivePolling(){if(_liveTimer)return;_liveTimer=setInterval(pollLiveScores,60*1000);pollLiveScores();}
 
 async function updateResults(){
