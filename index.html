@@ -1190,9 +1190,10 @@ async function pollLiveScores(){
       const st=ev.status||{},state=(st.type||{}).state||'pre',clock=st.displayClock||'';
       if(state==='pre')return;
       const hn=hc.team.displayName||hc.team.name,an=ac.team.displayName||ac.team.name;
-      evts.push({home:hn,away:an,time:ev.date,hs:+(hc.score||0),as:+(ac.score||0)});
+      const et=Date.parse(ev.date);
+      evts.push({home:hn,away:an,time:et,hs:+(hc.score||0),as:+(ac.score||0)});
       if(state==='in'){const h=toOurs(hn),a=toOurs(an);if(!h||!a)return;
-        const gm=findGroupMatch(h,a,ev.date);
+        const gm=findGroupMatch(h,a,et);
         if(gm&&_live[gm.id]!==clock){_live[gm.id]=clock;liveChanged=true;}}});
     const n=applyEvents(evts);
     /* KO live clocks — después de applyEvents (que llama recompute, resuelve equipos KO) */
@@ -1202,7 +1203,7 @@ async function pollLiveScores(){
       const clock=(ev.status||{}).displayClock||'';
       const hc=comp.competitors.find(c=>c.homeAway==='home'),ac=comp.competitors.find(c=>c.homeAway==='away');if(!hc||!ac)return;
       const h=toOurs(hc.team.displayName||hc.team.name),a=toOurs(ac.team.displayName||ac.team.name);if(!h||!a)return;
-      const km=findKoMatch(h,a,ev.date);
+      const km=findKoMatch(h,a,Date.parse(ev.date));
       if(km&&_live[km.m.id]!==clock){_live[km.m.id]=clock;liveChanged=true;}});
     if(n>0||liveChanged)rerender();
   }catch(e){}}
