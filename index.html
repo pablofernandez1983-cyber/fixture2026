@@ -277,6 +277,11 @@ body.light .match.done{border-left:3px solid var(--green);background:rgba(0,136,
 .sc2{background:var(--surface2);border-radius:8px;padding:10px 12px}
 .sv{font-family:'Bebas Neue';font-size:30px;color:var(--gold);line-height:1}
 .sl{font-family:'Barlow Condensed';font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.stat-s>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.stat-s>summary::-webkit-details-marker{display:none}
+.stat-s>summary .chev{font-size:10px;color:var(--muted);transition:transform .2s;flex:0 0 auto;margin-left:8px}
+.stat-s[open]>summary .chev{transform:rotate(180deg)}
+.rk-badge{font-family:'Barlow Condensed';font-size:11px;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -990,6 +995,71 @@ function updateChampion(){const champ=koWinnerLoser(104).w;const cb=document.get
   else cb.classList.add('hidden');}
 
 function rerender(){recompute();renderHoy();renderGroups();renderKoList();renderBracketGraph();renderKoStatus();renderArg();renderStats();updateChampion();}
+/* ---------- posiciones finales de la Copa (si terminara hoy, solo datos reales) ---------- */
+/* A diferencia de resolveSlot/koWinnerLoser (que rellenan con pronóstico según viewMode),
+   estas dos usan ÚNICAMENTE resultados reales — necesario para que la tabla de posiciones
+   no mezcle equipos que en verdad no clasificaron todavía. */
+function realWinnerLoser(no){const rk=STATE.koReal[no];if(rk&&rk.fin&&rk.adv)return rk.adv==='home'?{w:rk.home,l:rk.away}:{w:rk.away,l:rk.home};return null;}
+function realSlotTeam(slot,mno){
+  if(slot.t==='W')return groupRealComplete(slot.g)?_G[slot.g].rows[0].team:null;
+  if(slot.t==='R')return groupRealComplete(slot.g)?_G[slot.g].rows[1].team:null;
+  if(slot.t==='T'){if(!_groupsRealAll)return null;const gr=_T&&_T.assign[mno];return gr?_G[gr].rows[2].team:null;}
+  if(slot.t==='M'){const wl=realWinnerLoser(slot.m);return wl?wl.w:null;}
+  if(slot.t==='ML'){const wl=realWinnerLoser(slot.m);return wl?wl.l:null;}
+  return null;}
+/* Ranking del "si terminara hoy": por ronda más lejana alcanzada (cronológicamente no puede haber
+   ambigüedad entre rondas porque una ronda no arranca hasta que la anterior está completa), con los
+   4 puestos de arriba resueltos por SF/3P/F reales y, si todavía no se jugaron, un estado "pendiente". */
+function computeFinalStandings(){
+  const info={};
+  /* orden ascendente = mejor posición. Un equipo todavía "vivo" en una ronda va mejor
+     posicionado que uno ya eliminado en esa misma ronda (mismo piso garantizado, techo más alto). */
+  const ORDER_ELIM={R32:80,R16:60,QF:40,SF:20};
+  const ORDER_ALIVE={R32:78,R16:58,QF:38,SF:7};
+  ['R32','R16','QF','SF'].forEach(rnd=>{
+    DATA.koMatches.filter(m=>m.round===rnd).forEach(m=>{
+      const h=realSlotTeam(m.home,m.no),a=realSlotTeam(m.away,m.no);
+      const wl=realWinnerLoser(m.no);
+      [h,a].forEach(t=>{if(!t)return;
+        if(wl&&t===wl.l)info[t]={order:ORDER_ELIM[rnd],label:'Eliminado en '+roundName(rnd).toLowerCase()};
+        else if(!wl)info[t]={order:ORDER_ALIVE[rnd],label:'En '+roundName(rnd).toLowerCase()};
+        /* si wl && t===wl.w: sigue vivo — la próxima ronda (o el bloque de SF/3P/F) lo va a sobreescribir con info mejor */
+      });
+    });
+  });
+  const finalM=DATA.koMatches.find(m=>m.round==='F'),thirdM=DATA.koMatches.find(m=>m.round==='3P');
+  const finalWL=finalM?realWinnerLoser(finalM.no):null;
+  if(finalWL){info[finalWL.w]={order:1,label:'&#127942; Campe&oacute;n'};info[finalWL.l]={order:2,label:'Subcampe&oacute;n'};}
+  else if(finalM){const h=realSlotTeam(finalM.home,finalM.no),a=realSlotTeam(finalM.away,finalM.no);[h,a].forEach(t=>{if(t)info[t]={order:5,label:'Finalista'};});}
+  const thirdWL=thirdM?realWinnerLoser(thirdM.no):null;
+  if(thirdWL){info[thirdWL.w]={order:3,label:'3er puesto'};info[thirdWL.l]={order:4,label:'4to puesto'};}
+  else if(thirdM){const h=realSlotTeam(thirdM.home,thirdM.no),a=realSlotTeam(thirdM.away,thirdM.no);[h,a].forEach(t=>{if(t)info[t]={order:9,label:'Jugar&aacute; el 3er puesto'};});}
+  const groupRows=[];
+  Object.keys(DATA.groups).forEach(g=>{
+    if(!groupRealComplete(g))return;
+    (_G[g].rows||[]).forEach(r=>{
+      const qual3=r.pos===3&&_T&&_T.qualified&&_T.qualified[g];
+      if(r.pos<=2||qual3||info[r.team])return;
+      groupRows.push(r);
+    });
+  });
+  groupRows.sort((x,y)=>y.Pts-x.Pts||y.GD-x.GD||y.GF-x.GF);
+  groupRows.forEach((r,i)=>{info[r.team]={order:100+i*.01,label:'Fase de grupos'};});
+  Object.values(DATA.groups).flat().forEach(t=>{if(!info[t])info[t]={order:200,label:'Fase de grupos (en curso)'};});
+  return Object.entries(info).map(([team,v])=>({team,...v})).sort((a,b)=>a.order-b.order||a.team.localeCompare(b.team));
+}
+function renderFinalStandingsBlock(){
+  const rows=computeFinalStandings();
+  if(!rows.length)return '';
+  let rank=0,prevOrder=null,body='';
+  rows.forEach((r,i)=>{if(r.order!==prevOrder){rank=i+1;prevOrder=r.order;}
+    const isArg=r.team===ARG;
+    body+=`<tr><td class="l g">${rank}</td><td class="l ${isArg?'arg':''}">${r.team}</td><td class="l"><span class="rk-badge">${r.label}</span></td></tr>`;});
+  return `<details class="stat-s" open><summary class="stat-h">Posiciones finales de la Copa &middot; si terminara hoy<span class="chev">&#9662;</span></summary>`+
+    `<table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th class="l">Etapa</th></tr></thead><tbody>${body}</tbody></table>`+
+    `<div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Ranking no oficial seg&uacute;n la ronda m&aacute;s lejana alcanzada con <b>resultados reales</b> (no pronóstico). Los equipos todav&iacute;a en carrera aparecen mejor posicionados que los ya eliminados en su misma ronda.</div>`+
+    `</details>`;
+}
 /* ---------- estadísticas (solo datos reales, sin pronóstico) ---------- */
 let _stats=null;
 let _bettingOdds=null,_bettingOddsLoading=false;
@@ -1038,6 +1108,37 @@ function renderStats(){
   const pct=totalAll>0?Math.round(totalPlayed/totalAll*100):0;
   const pctG=Math.round(totalM/DATA.groupMatches.length*100);
   let h='<div class="wrap">';
+  /* ── Posiciones finales de la Copa (si terminara hoy) ── */
+  h+=renderFinalStandingsBlock();
+
+  /* ── Favorito para ganar el Mundial — cuotas reales de casas ── */
+  h+=`<div class="stat-s">`;
+  if(_bettingOdds&&_bettingOdds.length>0){
+    const elim=eliminatedKoTeams();const groupElim=eliminatedGroupTeams();
+    const isElim=t=>elim.has(t)||elim.has(toOurs(t))||groupElim.has(t)||groupElim.has(toOurs(t));
+    /* Deduplicar por nombre canónico: la fuente a veces trae el mismo equipo con dos
+       grafías (ej. "Bosnia y Herzegovina" y "Bosnia & Herzegovina"). Nos quedamos con la
+       mejor cuota de cada uno; así una variante que no matchea no escapa al filtro. */
+    const byTeam={};_bettingOdds.forEach(o=>{const k=toOurs(o.team)||o.team;if(!byTeam[k]||+o.decimal_odds<+byTeam[k].decimal_odds)byTeam[k]={...o,team:k};});
+    const alive=Object.values(byTeam).filter(o=>!isElim(o.team)).sort((a,b)=>a.decimal_odds-b.decimal_odds);
+    const sum=alive.reduce((s,o)=>s+1/o.decimal_odds,0);
+    const top=alive.slice(0,16).map(o=>({...o,name:(toOurs(o.team)||o.team),pct:+(1/o.decimal_odds/sum*100).toFixed(1)}));
+    const upd=_bettingOdds[0]&&_bettingOdds[0].updated_at?new Date(_bettingOdds[0].updated_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Cuotas reales</div><div class="rank">`;
+    top.forEach((o,i)=>{const isArg=o.name==='Argentina';
+      const dec=o.decimal_odds>=10?o.decimal_odds.toFixed(0):o.decimal_odds.toFixed(1);
+      h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${o.name}</span><span class="rkg" style="flex:0 0 54px;text-align:right;font-family:'Bebas Neue';font-size:14px;color:var(--gold)">${dec}x</span><span class="rkp">${o.pct}%</span></div>`;});
+    h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Mejor cuota disponible entre casas de apuestas (Betfair / William Hill, v&iacute;a the-odds-api)${upd?' &middot; act. '+upd:''}. Se actualiza 1 vez al d&iacute;a; sin los eliminados. Probabilidades normalizadas (sin margen de la banca).</div>`;
+  } else if(_bettingOddsLoading){
+    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Cuotas reales</div>`;
+    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:10px 0">Cargando cuotas de apuestas...</div>`;
+  } else {
+    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Cuotas reales</div>`;
+    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0">Tocá el botón para cargar las cuotas actuales de las casas de apuestas.</div>`;
+  }
+  h+=`<button onclick="${_bettingOddsLoading?'':(_bettingOdds?'refreshBettingOdds()':'fetchBettingOdds()')}" ${_bettingOddsLoading?'disabled':''} style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:${_bettingOddsLoading?'var(--muted)':'var(--gold)'};font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; ${_bettingOddsLoading?'Cargando...':(_bettingOdds?'Actualizar cuotas ahora':'Cargar cuotas de apuestas')}</button>`;
+  h+=`</div>`;
+
   /* ── Avance del Mundial ── */
   h+=`<div class="stat-s"><div class="stat-h">Avance del Mundial</div>`+
      `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">`+
@@ -1047,25 +1148,26 @@ function renderStats(){
      `<div style="display:flex;gap:16px;font-family:'Barlow Condensed';font-size:13px;color:var(--muted)">`+
      `<span>Grupos: <b style="color:${totalM>0?'var(--gold)':'inherit'}">${totalM}/${DATA.groupMatches.length}</b> (${pctG}%)</span>`+
      `<span>Fase Final: <b style="color:${koM>0?'var(--gold)':'inherit'}">${koM}/${DATA.koMatches.length}</b></span></div></div>`;
+  let groupHtml='';
   if(totalM===0&&koM===0){h+=`<div class="note">Todavía no hay resultados reales cargados. Usá &#8635; Actualizar para traer los datos.</div>`;}
   else{
     if(totalM>0){
       const avg=(totalG/totalM).toFixed(1);
-      h+=`<div class="sg"><div class="sc2"><div class="sv">${totalG}</div><div class="sl">Goles (grupos)</div></div>`+
+      groupHtml+=`<div class="sg"><div class="sc2"><div class="sv">${totalG}</div><div class="sl">Goles (grupos)</div></div>`+
          `<div class="sc2"><div class="sv">${avg}</div><div class="sl">Goles por partido</div></div>`+
          `<div class="sc2"><div class="sv">${cs}</div><div class="sl">Porterías invictas</div></div>`+
          `<div class="sc2"><div class="sv">${emp}</div><div class="sl">Empates</div></div></div>`;
-      h+=`<div class="stat-s"><div class="stat-h">Fase de grupos — resultados</div>`+
+      groupHtml+=`<div style="margin-top:6px"><div class="stat-h">Resultados</div>`+
          `<div style="display:flex;gap:14px;font-family:'Barlow Condensed';font-size:15px;flex-wrap:wrap">`+
          `<span>&#127968; Local: <b style="color:var(--gold)">${locW}</b></span>`+
          `<span>X Empate: <b>${emp}</b></span>`+
          `<span>&#128499; Visitante: <b>${visW}</b></span></div>`+
          (maxG>=0?`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:12px;margin-top:6px">M&aacute;s goles: ${maxMStr} (${maxG})</div>`:'')+
          '</div>';
-      h+=`<div class="stat-s"><div class="stat-h">Clasificaci&oacute;n — fase de grupos</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th style="color:var(--gold)">Pts</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
+      groupHtml+=`<div style="margin-top:14px"><div class="stat-h">Clasificaci&oacute;n</div><table class="stb"><thead><tr><th class="l">#</th><th class="l">Equipo</th><th>PJ</th><th style="color:var(--gold)">Pts</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>`;
       teams.forEach(([t,v],i)=>{const dg=v.gf-v.gc;const isArg=t===ARG;
-        h+=`<tr><td class="l g">${i+1}</td><td class="l ${isArg?'arg':''}">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.pts}</td><td>${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
-      h+='</tbody></table></div>';}
+        groupHtml+=`<tr><td class="l g">${i+1}</td><td class="l ${isArg?'arg':''}">${t}</td><td>${v.pj}</td><td style="color:var(--gold);font-weight:700">${v.pts}</td><td>${v.gf}</td><td>${v.gc}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td></tr>`;});
+      groupHtml+='</tbody></table></div>';}
     if(koM>0){
       const avgKo=(koG/koM).toFixed(1);
       h+=`<div class="stat-s"><div class="stat-h">Fase Final — resultados reales</div>`+
@@ -1075,18 +1177,6 @@ function renderStats(){
          `<div class="sc2"><div class="sv">${koM}</div><div class="sl">Partidos jugados</div></div></div></div>`;
     }
   }
-  /* Tabla de mejores terceros */
-  {const allThirds=(_T&&_T.ranking)||[];const thirdsWithGames=allThirds.filter(t=>t.P>0);
-  if(thirdsWithGames.length>0){
-    h+=`<div class="stat-s"><div class="stat-h">Tabla de mejores terceros</div>`;
-    h+=`<table class="stb"><thead><tr><th class="l">Gr</th><th class="l">Equipo</th><th>PJ</th><th>Pts</th><th>DG</th><th>GF</th><th>GA</th><th></th></tr></thead><tbody>`;
-    allThirds.forEach((t,i)=>{
-      const qual=i<8;const isArg=t.team==='Argentina';const dg=t.GD;
-      const badge=qual?`<span style="color:var(--green);font-size:10px;font-weight:700">&#10003;</span>`:`<span style="color:var(--muted);font-size:10px">${i+1}º</span>`;
-      h+=`<tr style="${qual?'background:rgba(0,201,78,.07)':''}"><td class="l g">${t.g}</td><td class="l ${isArg?'arg':''}" style="font-weight:${qual?700:400}">${t.team}</td><td>${t.P}</td><td style="color:var(--gold);font-weight:700">${t.Pts}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td><td>${t.GF}</td><td>${t.GA}</td><td>${badge}</td></tr>`;});
-    h+=`</tbody></table>`;
-    h+=`<div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Los 8 mejores terceros (&#10003;) clasifican a los Dieciseisavos. Orden: Pts &bull; DG &bull; GF &bull; grupo. Se muestran los 12 terceros actuales (grupos incompletos son provisionales).</div>`;
-    h+=`</div>`;}}
   /* Goleadores y asistencias individuales (ESPN) */
   h+=`<div class="stat-s"><div class="stat-h">Goleadores individuales</div>`;
   if(_stats&&!_stats._failed){
@@ -1126,34 +1216,6 @@ function renderStats(){
   h+=`<button onclick="loadStats()" style="margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--gold);font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; Actualizar goleadores</button>`;
   h+='</div>'; /* cierra stat-s ESPN */
 
-  /* ── Probabilidades de campeón — cuotas reales de casas (the-odds-api: Betfair/William Hill) ── */
-  h+=`<div class="stat-s">`;
-  if(_bettingOdds&&_bettingOdds.length>0){
-    const elim=eliminatedKoTeams();const groupElim=eliminatedGroupTeams();
-    const isElim=t=>elim.has(t)||elim.has(toOurs(t))||groupElim.has(t)||groupElim.has(toOurs(t));
-    /* Deduplicar por nombre canónico: la fuente a veces trae el mismo equipo con dos
-       grafías (ej. "Bosnia y Herzegovina" y "Bosnia & Herzegovina"). Nos quedamos con la
-       mejor cuota de cada uno; así una variante que no matchea no escapa al filtro. */
-    const byTeam={};_bettingOdds.forEach(o=>{const k=toOurs(o.team)||o.team;if(!byTeam[k]||+o.decimal_odds<+byTeam[k].decimal_odds)byTeam[k]={...o,team:k};});
-    const alive=Object.values(byTeam).filter(o=>!isElim(o.team)).sort((a,b)=>a.decimal_odds-b.decimal_odds);
-    const sum=alive.reduce((s,o)=>s+1/o.decimal_odds,0);
-    const top=alive.slice(0,16).map(o=>({...o,name:(toOurs(o.team)||o.team),pct:+(1/o.decimal_odds/sum*100).toFixed(1)}));
-    const upd=_bettingOdds[0]&&_bettingOdds[0].updated_at?new Date(_bettingOdds[0].updated_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Cuotas reales</div><div class="rank">`;
-    top.forEach((o,i)=>{const isArg=o.name==='Argentina';
-      const dec=o.decimal_odds>=10?o.decimal_odds.toFixed(0):o.decimal_odds.toFixed(1);
-      h+=`<div class="rkrow"><span class="rkn">${i+1}</span><span class="rkt ${isArg?'arg':''}">${o.name}</span><span class="rkg" style="flex:0 0 54px;text-align:right;font-family:'Bebas Neue';font-size:14px;color:var(--gold)">${dec}x</span><span class="rkp">${o.pct}%</span></div>`;});
-    h+=`</div><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Mejor cuota disponible entre casas de apuestas (Betfair / William Hill, v&iacute;a the-odds-api)${upd?' &middot; act. '+upd:''}. Se actualiza 1 vez al d&iacute;a; sin los eliminados. Probabilidades normalizadas (sin margen de la banca).</div>`;
-  } else if(_bettingOddsLoading){
-    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Cuotas reales</div>`;
-    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:10px 0">Cargando cuotas de apuestas...</div>`;
-  } else {
-    h+=`<div class="stat-h">Favorito para ganar el Mundial &middot; Cuotas reales</div>`;
-    h+=`<div style="color:var(--muted);font-family:'Barlow Condensed';font-size:14px;padding:6px 0">Tocá el botón para cargar las cuotas actuales de las casas de apuestas.</div>`;
-  }
-  h+=`<button onclick="${_bettingOddsLoading?'':(_bettingOdds?'refreshBettingOdds()':'fetchBettingOdds()')}" ${_bettingOddsLoading?'disabled':''} style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:${_bettingOddsLoading?'var(--muted)':'var(--gold)'};font-family:'Barlow Condensed';font-size:15px;padding:8px 16px;cursor:pointer;width:100%">&#8635; ${_bettingOddsLoading?'Cargando...':(_bettingOdds?'Actualizar cuotas ahora':'Cargar cuotas de apuestas')}</button>`;
-  h+=`</div>`;
-
   /* ── Goleadores históricos de Mundiales (+ 2026 en vivo) ── */
   const espn2026={};
   // Preferir _summaryGoals (match summaries, real-time) sobre el endpoint de estadísticas agregadas (puede laggar)
@@ -1190,6 +1252,23 @@ function renderStats(){
     ?`Totales incluyen goles de 2026 (${src2026}, en vivo). Fuente hist&oacute;rica: FIFA.`
     :`Datos pre-2026 (FIFA). Los totales se actualizan al cargar las estad&iacute;sticas de ESPN.`;
   h+=`</tbody></table><div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">${noteText}</div></div>`;
+
+  /* ── Fase de grupos (comprimido, al final) ── */
+  if(groupHtml){
+    h+=`<details class="stat-s"><summary class="stat-h">Fase de grupos<span class="chev">&#9662;</span></summary>${groupHtml}</details>`;
+  }
+  /* ── Tabla de mejores terceros (comprimido, al final) ── */
+  {const allThirds=(_T&&_T.ranking)||[];const thirdsWithGames=allThirds.filter(t=>t.P>0);
+  if(thirdsWithGames.length>0){
+    h+=`<details class="stat-s"><summary class="stat-h">Tabla de mejores terceros<span class="chev">&#9662;</span></summary>`;
+    h+=`<table class="stb"><thead><tr><th class="l">Gr</th><th class="l">Equipo</th><th>PJ</th><th>Pts</th><th>DG</th><th>GF</th><th>GA</th><th></th></tr></thead><tbody>`;
+    allThirds.forEach((t,i)=>{
+      const qual=i<8;const isArg=t.team==='Argentina';const dg=t.GD;
+      const badge=qual?`<span style="color:var(--green);font-size:10px;font-weight:700">&#10003;</span>`:`<span style="color:var(--muted);font-size:10px">${i+1}º</span>`;
+      h+=`<tr style="${qual?'background:rgba(0,201,78,.07)':''}"><td class="l g">${t.g}</td><td class="l ${isArg?'arg':''}" style="font-weight:${qual?700:400}">${t.team}</td><td>${t.P}</td><td style="color:var(--gold);font-weight:700">${t.Pts}</td><td style="${dg>0?'color:var(--green)':dg<0?'color:var(--red)':''}">${dg>0?'+':''}${dg}</td><td>${t.GF}</td><td>${t.GA}</td><td>${badge}</td></tr>`;});
+    h+=`</tbody></table>`;
+    h+=`<div style="font-family:'Barlow Condensed';font-size:11px;color:var(--muted);margin-top:6px">Los 8 mejores terceros (&#10003;) clasifican a los Dieciseisavos. Orden: Pts &bull; DG &bull; GF &bull; grupo. Se muestran los 12 terceros actuales (grupos incompletos son provisionales).</div>`;
+    h+=`</details>`;}}
 
   h+='</div>'; /* cierra wrap */
   cont.innerHTML=h;}
